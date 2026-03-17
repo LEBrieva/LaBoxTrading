@@ -77,7 +77,7 @@ export async function getTrades(accountId: string, filters?: {
       ...(filters?.from && { openedAt: { gte: filters.from } }),
       ...(filters?.to && { openedAt: { lte: filters.to } }),
     },
-    include: { positions: true },
+    include: { positions: true, images: { orderBy: { createdAt: "asc" } } },
     orderBy: { openedAt: "desc" },
   });
 }
@@ -86,7 +86,7 @@ export async function getTrade(id: string) {
   const user = await getUser();
   const trade = await prisma.trade.findUnique({
     where: { id },
-    include: { positions: true, account: true },
+    include: { positions: true, account: true, images: { orderBy: { createdAt: "asc" } } },
   });
   if (!trade) throw new Error("Trade no encontrado");
 

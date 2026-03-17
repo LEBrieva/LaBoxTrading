@@ -15,6 +15,13 @@ interface Position {
   closedAt: Date | null;
 }
 
+interface TradeImage {
+  id: string;
+  url: string;
+  caption: string | null;
+  createdAt: Date;
+}
+
 interface TradeCardProps {
   id: string;
   pair: string;
@@ -31,6 +38,7 @@ interface TradeCardProps {
   closedAt: Date | null;
   status: string;
   positions: Position[];
+  images: TradeImage[];
 }
 
 function statusColor(status: string): string {
@@ -81,6 +89,7 @@ export function TradeCard({
   closedAt,
   status,
   positions,
+  images,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isLong = direction === "LONG";
@@ -142,6 +151,14 @@ export function TradeCard({
             >
               {status === "OPEN" ? "Abierto" : "Cerrado"}
             </span>
+            {images.length > 0 && (
+              <span
+                title={`${images.length} screenshot${images.length > 1 ? "s" : ""}`}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-[#71717a] font-mono rounded border border-[#252833]"
+              >
+                ▣ {images.length}
+              </span>
+            )}
             <span className="text-[#52525b] text-[10px] font-mono">
               {timeAgo(openedAt)}
             </span>
@@ -253,6 +270,7 @@ export function TradeCard({
           closedAt,
           status,
           positions,
+          images,
         }}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

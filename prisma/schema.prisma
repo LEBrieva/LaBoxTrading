@@ -54,8 +54,20 @@ model Trade {
   closedAt   DateTime?   @map("closed_at")
   status     TradeStatus @default(OPEN)
   positions  Position[]
+  images     TradeImage[]
 
   @@map("trades")
+}
+
+model TradeImage {
+  id        String   @id @default(cuid())
+  tradeId   String   @map("trade_id")
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("trade_images")
 }
 
 model Position {

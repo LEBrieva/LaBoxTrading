@@ -13,6 +13,13 @@ interface Position {
   closedAt: Date | null;
 }
 
+interface TradeImage {
+  id: string;
+  url: string;
+  caption: string | null;
+  createdAt: Date;
+}
+
 interface Trade {
   id: string;
   pair: string;
@@ -29,6 +36,7 @@ interface Trade {
   closedAt: Date | null;
   status: string;
   positions: Position[];
+  images: TradeImage[];
 }
 
 type StatusFilter = "ALL" | "OPEN" | "CLOSED";
@@ -228,6 +236,7 @@ export function TradesList({
               closedAt={trade.closedAt}
               status={trade.status}
               positions={trade.positions}
+              images={trade.images}
             />
           ))}
         </div>

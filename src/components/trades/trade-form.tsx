@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createTrade } from "@/lib/actions/trades";
+import { addTradeImage } from "@/lib/actions/trade-images";
 import { calcRiskUsd, calcRiskPct, calcTpPrice, calcEstimatedGain } from "@/lib/calculations";
+import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
+import { createClient } from "@/lib/supabase/client";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -28,6 +31,9 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
   const [notes, setNotes] = useState("");
   const [ratio, setRatio] = useState("3");
   const [openedAt, setOpenedAt] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   function handleRiskPctChange(val: string) {
@@ -58,7 +64,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
-      await createTrade({
+      const trade = await createTrade({
         accountId,
         pair,
         direction,
@@ -71,6 +77,15 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
         notes: notes || undefined,
         openedAt: openedAt ? new Date(openedAt).toISOString() : undefined,
       });
+
+      if (imageFile) {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const url = await uploadTradeScreenshot(user.id, imageFile);
+          await addTradeImage(trade.id, url);
+        }
+      }
       setOpen(false);
       resetForm();
       router.refresh();
@@ -93,6 +108,20 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
     setNotes("");
     setRatio("3");
     setOpenedAt("");
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+    } else {
+      setImagePreview(null);
+    }
   }
 
   return (
@@ -178,7 +207,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               {/* Size + External ID */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className={labelClass}>Tamano (lots)</label>
+                  <label className={labelClass}>Tamaño (lots)</label>
                   <input className={inputClass} type="number" step="any" placeholder="0.01" value={size} onChange={(e) => setSize(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
@@ -267,6 +296,34 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
+              </div>
+
+              {/* Screenshot */}
+              <div className="space-y-1.5">
+                <label className={labelClass}>Screenshot (opcional)</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border border-dashed border-[#252833] rounded-lg p-4 text-center cursor-pointer hover:border-[#5eead4]/40 transition-colors"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  {imagePreview ? (
+                    <div className="space-y-2">
+                      <img src={imagePreview} alt="Preview" className="max-h-[120px] mx-auto rounded border border-[#252833]" />
+                      <p className="text-[10px] text-[#5eead4] font-mono">{imageFile?.name}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-[12px] text-[#71717a] font-mono">Click para subir imagen</p>
+                      <p className="text-[9px] text-[#52525b] font-mono">PNG, JPG o WebP — max 5MB</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
