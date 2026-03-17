@@ -24,6 +24,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
   const [direction, setDirection] = useState<"LONG" | "SHORT">("LONG");
   const [entry, setEntry] = useState("");
   const [stopLoss, setStopLoss] = useState("");
+  const [takeProfit, setTakeProfit] = useState("");
   const [size, setSize] = useState("");
   const [riskPct, setRiskPct] = useState("1");
   const [riskUsd, setRiskUsd] = useState(calcRiskUsd(currentCapital, 1).toFixed(2));
@@ -51,7 +52,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
   const entryNum = parseFloat(entry);
   const slNum = parseFloat(stopLoss);
   const ratioNum = parseFloat(ratio);
-  const tpPrice =
+  const tpFromRatio =
     !isNaN(entryNum) && !isNaN(slNum) && !isNaN(ratioNum)
       ? calcTpPrice(entryNum, slNum, ratioNum, direction)
       : null;
@@ -59,6 +60,26 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
     !isNaN(parseFloat(riskUsd)) && !isNaN(ratioNum)
       ? calcEstimatedGain(parseFloat(riskUsd), ratioNum)
       : null;
+
+  function handleRatioChange(val: string) {
+    setRatio(val);
+    const r = parseFloat(val);
+    if (!isNaN(entryNum) && !isNaN(slNum) && !isNaN(r)) {
+      setTakeProfit(calcTpPrice(entryNum, slNum, r, direction).toFixed(2));
+    }
+  }
+
+  function handleTpChange(val: string) {
+    setTakeProfit(val);
+    const tp = parseFloat(val);
+    if (!isNaN(entryNum) && !isNaN(slNum) && !isNaN(tp)) {
+      const slDist = Math.abs(entryNum - slNum);
+      if (slDist > 0) {
+        const tpDist = Math.abs(tp - entryNum);
+        setRatio((tpDist / slDist).toFixed(2));
+      }
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +91,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
         direction,
         entry: entry ? parseFloat(entry) : undefined,
         stopLoss: stopLoss ? parseFloat(stopLoss) : undefined,
+        takeProfit: takeProfit ? parseFloat(takeProfit) : undefined,
         size: size ? parseFloat(size) : undefined,
         riskUsd: parseFloat(riskUsd),
         riskPct: parseFloat(riskPct),
@@ -101,6 +123,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
     setDirection("LONG");
     setEntry("");
     setStopLoss("");
+    setTakeProfit("");
     setSize("");
     setRiskPct("1");
     setRiskUsd(calcRiskUsd(currentCapital, 1).toFixed(2));
@@ -192,8 +215,8 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
                 </div>
               </div>
 
-              {/* Entry + SL */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Entry + SL + TP */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Precio de entrada</label>
                   <input className={inputClass} type="number" step="any" placeholder="0.00" value={entry} onChange={(e) => setEntry(e.target.value)} />
@@ -201,6 +224,10 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
                 <div className="space-y-1.5">
                   <label className={labelClass}>Stop Loss</label>
                   <input className={inputClass} type="number" step="any" placeholder="0.00" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClass}>Take Profit</label>
+                  <input className={inputClass} type="number" step="any" placeholder="0.00" value={takeProfit} onChange={(e) => handleTpChange(e.target.value)} />
                 </div>
               </div>
 
@@ -258,12 +285,12 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                   <div>
                     <div className="text-[10px] text-[#52525b] mb-1 font-mono">Ratio (ej: 1, 3, 8)</div>
-                    <input className={`${inputClass} !py-1.5 !text-[12px]`} type="number" step="any" min="0.1" value={ratio} onChange={(e) => setRatio(e.target.value)} />
+                    <input className={`${inputClass} !py-1.5 !text-[12px]`} type="number" step="any" min="0.1" value={ratio} onChange={(e) => handleRatioChange(e.target.value)} />
                   </div>
                   <div>
                     <div className="text-[10px] text-[#52525b] mb-1 font-mono">Precio TP resultante</div>
                     <div className="font-mono text-sm font-bold py-1.5 text-[#4ade80]">
-                      {tpPrice !== null ? tpPrice.toFixed(2) : "\u2014"}
+                      {tpFromRatio !== null ? tpFromRatio.toFixed(2) : "\u2014"}
                     </div>
                   </div>
                   <div>

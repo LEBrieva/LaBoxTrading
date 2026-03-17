@@ -32,6 +32,7 @@ interface Trade {
   direction: "LONG" | "SHORT";
   entry: number | null;
   stopLoss: number | null;
+  takeProfit: number | null;
   size: number | null;
   riskUsd: number;
   riskPct: number;
@@ -79,6 +80,7 @@ export function TradeDrawer({
   const [saving, setSaving] = useState(false);
   const [entry, setEntry] = useState(trade.entry?.toString() ?? "");
   const [stopLoss, setStopLoss] = useState(trade.stopLoss?.toString() ?? "");
+  const [takeProfit, setTakeProfit] = useState(trade.takeProfit?.toString() ?? "");
   const [notes, setNotes] = useState(trade.notes ?? "");
   const [openedAt, setOpenedAt] = useState(toLocalDatetime(trade.openedAt));
 
@@ -92,6 +94,7 @@ export function TradeDrawer({
   useEffect(() => {
     setEntry(trade.entry?.toString() ?? "");
     setStopLoss(trade.stopLoss?.toString() ?? "");
+    setTakeProfit(trade.takeProfit?.toString() ?? "");
     setNotes(trade.notes ?? "");
     setOpenedAt(toLocalDatetime(trade.openedAt));
   }, [trade, editing]);
@@ -130,6 +133,7 @@ export function TradeDrawer({
       await updateTrade(trade.id, {
         entry: entry ? parseFloat(entry) : null,
         stopLoss: stopLoss ? parseFloat(stopLoss) : null,
+        takeProfit: takeProfit ? parseFloat(takeProfit) : null,
         notes: notes || null,
         openedAt,
       });
@@ -320,6 +324,12 @@ export function TradeDrawer({
                         : "#f87171"
                     }
                   />
+                )}
+
+                {editing ? (
+                  <EditCell label="Take Profit" type="number" value={takeProfit} onChange={setTakeProfit} placeholder="Precio TP" />
+                ) : (
+                  <InfoCell label="TP" value={trade.takeProfit?.toFixed(2) ?? "\u2014"} color="#4ade80" />
                 )}
 
                 <InfoCell label="Riesgo" value={`${formatCurrency(trade.riskUsd)} (${trade.riskPct.toFixed(1)}%)`} color="#f87171" />

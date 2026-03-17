@@ -44,6 +44,7 @@ model Trade {
   direction  Direction
   entry      Float?
   stopLoss   Float?      @map("stop_loss")
+  takeProfit Float?      @map("take_profit")
   size       Float?
   riskUsd    Float       @map("risk_usd")
   riskPct    Float       @map("risk_pct")

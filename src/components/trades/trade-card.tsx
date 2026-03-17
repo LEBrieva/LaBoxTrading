@@ -30,6 +30,7 @@ interface TradeCardProps {
   riskPct: number;
   entry: number | null;
   stopLoss: number | null;
+  takeProfit: number | null;
   size: number | null;
   externalId: string | null;
   notes: string | null;
@@ -81,6 +82,7 @@ export function TradeCard({
   riskPct,
   entry,
   stopLoss,
+  takeProfit,
   size,
   externalId,
   notes,
@@ -166,7 +168,7 @@ export function TradeCard({
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 px-4 md:px-5 py-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 px-4 md:px-5 py-3">
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Riesgo
@@ -211,6 +213,14 @@ export function TradeCard({
                 </>
               );
             })()}
+          </div>
+          <div>
+            <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
+              TP
+            </span>
+            <span className="font-mono text-sm font-semibold text-[#4ade80]">
+              {takeProfit?.toFixed(2) ?? "—"}
+            </span>
           </div>
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
@@ -260,6 +270,7 @@ export function TradeCard({
           direction,
           entry,
           stopLoss,
+          takeProfit,
           size,
           riskUsd,
           riskPct,

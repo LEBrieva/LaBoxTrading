@@ -11,6 +11,7 @@ export async function createTrade(data: {
   direction: Direction;
   entry?: number;
   stopLoss?: number;
+  takeProfit?: number;
   size?: number;
   riskUsd: number;
   riskPct: number;
@@ -33,6 +34,7 @@ export async function createTrade(data: {
       direction: data.direction,
       entry: data.entry || null,
       stopLoss: data.stopLoss || null,
+      takeProfit: data.takeProfit || null,
       size: data.size || null,
       riskUsd: data.riskUsd,
       riskPct: data.riskPct,
@@ -82,6 +84,97 @@ export async function getTrades(accountId: string, filters?: {
   });
 }
 
+export async function getTradesForExport(accountId: string, filters?: {
+  status?: "OPEN" | "CLOSED";
+  from?: string;
+  to?: string;
+}) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const where = {
+    accountId,
+    ...(filters?.status && { status: filters.status }),
+    ...(filters?.from && { openedAt: { gte: new Date(filters.from) } }),
+    ...(filters?.to && {
+      openedAt: {
+        ...(filters?.from && { gte: new Date(filters.from) }),
+        lte: new Date(filters.to + "T23:59:59"),
+      },
+    }),
+  };
+
+  return prisma.trade.findMany({
+    where,
+    include: { positions: true },
+    orderBy: { openedAt: "desc" },
+  });
+}
+
+const PAGE_SIZE = 10;
+
+export async function getTradesPaginated(accountId: string, filters?: {
+  status?: "OPEN" | "CLOSED";
+  from?: string;
+  to?: string;
+  skip?: number;
+}) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const where = {
+    accountId,
+    ...(filters?.status && { status: filters.status }),
+    ...(filters?.from && { openedAt: { gte: new Date(filters.from) } }),
+    ...(filters?.to && {
+      openedAt: {
+        ...(filters?.from && { gte: new Date(filters.from) }),
+        lte: new Date(filters.to + "T23:59:59"),
+      },
+    }),
+  };
+
+  const [trades, total, statsRaw] = await Promise.all([
+    prisma.trade.findMany({
+      where,
+      include: { positions: true, images: { orderBy: { createdAt: "asc" } } },
+      orderBy: { openedAt: "desc" },
+      skip: filters?.skip || 0,
+      take: PAGE_SIZE,
+    }),
+    prisma.trade.count({ where }),
+    prisma.trade.findMany({
+      where,
+      select: { status: true, positions: { select: { pnl: true } } },
+    }),
+  ]);
+
+  const openCount = statsRaw.filter((t) => t.status === "OPEN").length;
+  const closedTrades = statsRaw.filter((t) => t.status === "CLOSED");
+  const wins = closedTrades.filter(
+    (t) => t.positions.reduce((s, p) => s + p.pnl, 0) > 0
+  ).length;
+  const losses = closedTrades.filter(
+    (t) => t.positions.reduce((s, p) => s + p.pnl, 0) < 0
+  ).length;
+  const totalPnl = closedTrades.reduce(
+    (s, t) => s + t.positions.reduce((sp, p) => sp + p.pnl, 0), 0
+  );
+
+  return {
+    trades,
+    total,
+    hasMore: (filters?.skip || 0) + PAGE_SIZE < total,
+    stats: { total, openCount, wins, losses, totalPnl },
+  };
+}
+
 export async function getTrade(id: string) {
   const user = await getUser();
   const trade = await prisma.trade.findUnique({
@@ -102,6 +195,7 @@ export async function getTrade(id: string) {
 export async function updateTrade(id: string, data: {
   entry?: number | null;
   stopLoss?: number | null;
+  takeProfit?: number | null;
   notes?: string | null;
   imageUrl?: string | null;
   externalId?: string | null;

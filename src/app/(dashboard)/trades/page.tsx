@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
-import { getTrades } from "@/lib/actions/trades";
+import { getTradesPaginated } from "@/lib/actions/trades";
 import { getAccountStats } from "@/lib/actions/stats";
 import { TradesList } from "@/components/trades/trades-list";
 import { TradeForm } from "@/components/trades/trade-form";
@@ -28,11 +28,14 @@ export default async function TradesPage({
     );
   }
 
-  const [trades, stats] = await Promise.all([
-    getTrades(activeAccountId),
+  const params = await searchParams;
+  const [{ trades, hasMore, stats: tradeStats }, accountStats] = await Promise.all([
+    getTradesPaginated(activeAccountId, {
+      from: params.from || undefined,
+      to: params.to || undefined,
+    }),
     getAccountStats(activeAccountId),
   ]);
-  const params = await searchParams;
 
   return (
     <div className="p-4 md:p-8">
@@ -40,10 +43,14 @@ export default async function TradesPage({
         <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase">
           Trades
         </h1>
-        <TradeForm accountId={activeAccountId} currentCapital={stats.currentCapital} />
+        <TradeForm accountId={activeAccountId} currentCapital={accountStats.currentCapital} />
       </div>
       <TradesList
-        trades={trades}
+        accountId={activeAccountId}
+        accountName={accounts.find((a) => a.id === activeAccountId)?.name || "Trades"}
+        initialTrades={trades}
+        initialHasMore={hasMore}
+        initialStats={tradeStats}
         initialDateFrom={params.from || ""}
         initialDateTo={params.to || ""}
       />
