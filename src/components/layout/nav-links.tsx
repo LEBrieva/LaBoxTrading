@@ -16,7 +16,7 @@ export function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-0.5 px-8 py-2.5 bg-[#0e1015] border-b border-[#252833]">
+    <nav className="hidden md:flex items-center gap-0.5 px-8 py-2.5 bg-[#0e1015] border-b border-[#252833]">
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         return (

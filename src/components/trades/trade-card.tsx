@@ -107,7 +107,7 @@ export function TradeCard({
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <div className="flex items-center justify-between px-4 md:px-5 pt-4 pb-2">
           <div className="flex items-center gap-2.5">
             <span className="text-[#d4d4d8] font-black text-base tracking-wide">
               {pair}
@@ -118,7 +118,7 @@ export function TradeCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Direction badge */}
             <span
               className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
@@ -166,7 +166,7 @@ export function TradeCard({
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-5 gap-3 px-5 py-3">
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 px-4 md:px-5 py-3">
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Riesgo
@@ -228,7 +228,7 @@ export function TradeCard({
           const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
           if (openPos) {
             return (
-              <div className="px-5 pb-4 pt-2 border-t border-[#252833]" onClick={(e) => e.stopPropagation()}>
+              <div className="px-4 md:px-5 pb-4 pt-2 border-t border-[#252833]" onClick={(e) => e.stopPropagation()}>
                 <ClosePositionDialog
                   positionId={openPos.id}
                   positionLabel={pair}
@@ -238,7 +238,7 @@ export function TradeCard({
             );
           }
           return (
-            <div className="flex items-center justify-between px-5 pb-4 pt-2 border-t border-[#252833]">
+            <div className="flex items-center justify-between px-4 md:px-5 pb-4 pt-2 border-t border-[#252833]">
               <span className="text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
                 Resultado
               </span>

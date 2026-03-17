@@ -88,7 +88,7 @@ export function TradesList({
   return (
     <div>
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 mb-6">
         {/* Status filter */}
         <div className="flex items-center gap-1">
           <button
@@ -115,7 +115,7 @@ export function TradesList({
         </div>
 
         {/* Separator */}
-        <div className="w-px h-6 bg-[#252833]" />
+        <div className="hidden md:block w-px h-6 bg-[#252833]" />
 
         {/* Date range */}
         <div className="flex items-center gap-2">
@@ -132,7 +132,7 @@ export function TradesList({
             max={new Date().toISOString().split("T")[0]}
             onChange={(e) => setDateFrom(e.target.value)}
             onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-            className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
+            className="flex-1 min-w-0 bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
           />
           <label
             className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] font-semibold cursor-pointer"
@@ -148,7 +148,7 @@ export function TradesList({
             max={new Date().toISOString().split("T")[0]}
             onChange={(e) => setDateTo(e.target.value)}
             onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-            className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
+            className="flex-1 min-w-0 bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
           />
         </div>
 
@@ -184,7 +184,7 @@ export function TradesList({
         const sign = totalPnl >= 0 ? "+" : "";
 
         return (
-          <div className="flex items-center gap-4 mb-5 px-4 py-3 bg-[#0e1015] border border-[#252833] rounded-lg font-mono text-[11px]">
+          <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-5 px-4 py-3 bg-[#0e1015] border border-[#252833] rounded-lg font-mono text-[11px]">
             <span className="text-[#d4d4d8]">
               {filtered.length} {filtered.length === 1 ? "trade" : "trades"}
             </span>

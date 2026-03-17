@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { AccountSwitcherWrapper } from "@/components/layout/account-switcher-wrapper";
 import { NavLinks } from "@/components/layout/nav-links";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { formatCurrency } from "@/lib/calculations";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-[#08090c]">
-      <header className="sticky top-0 z-50 flex items-center justify-between px-8 py-5 bg-[#0e1015] border-b border-[#252833]">
+      <header className="sticky top-0 z-50 flex flex-col md:flex-row md:items-center md:justify-between px-4 py-3 md:px-8 md:py-5 bg-[#0e1015] border-b border-[#252833] gap-2 md:gap-0">
         <div className="flex items-baseline gap-3">
           <span
             className="text-xl font-bold tracking-wider text-[#d4d4d8] uppercase"
@@ -20,16 +21,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
           >
             La Caja
           </span>
-          <span className="font-mono text-[10px] text-[#5eead4] tracking-[3px] uppercase opacity-60">
+          <span className="hidden md:inline font-mono text-[10px] text-[#5eead4] tracking-[3px] uppercase opacity-60">
             Trading Tracker
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
           {account && (
             <div className="text-right">
               <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">Capital</div>
               <div
-                className="font-mono text-xl font-bold text-[#4ade80]"
+                className="font-mono text-base md:text-xl font-bold text-[#4ade80]"
                 style={{ textShadow: "0 0 20px rgba(74,222,128,0.15)" }}
               >
                 {formatCurrency(account.currentCapital, account.currency)}
@@ -43,7 +44,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </header>
       <NavLinks />
-      <main>{children}</main>
+      <main className="pb-20 md:pb-0">{children}</main>
+      <MobileBottomNav />
     </div>
   );
 }

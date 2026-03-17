@@ -88,7 +88,7 @@ export function ClosePositionDialog({
             <form onSubmit={handleClose} className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className={labelClass}>Resultado</label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {resultOptions.map((opt) => (
                     <button
                       key={opt.value}

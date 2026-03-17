@@ -138,9 +138,9 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
-          <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[480px] max-w-[95vw] max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
+          <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[480px] max-w-[95vw] max-h-[95vh] md:max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#252833]">
+            <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-[#252833]">
               <span className="text-base font-extrabold tracking-tight text-[#d4d4d8]">
                 Nuevo trade
               </span>
@@ -149,9 +149,9 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
               {/* Par + Direccion */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Par / Instrumento</label>
                   <input
@@ -193,7 +193,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               </div>
 
               {/* Entry + SL */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Precio de entrada</label>
                   <input className={inputClass} type="number" step="any" placeholder="0.00" value={entry} onChange={(e) => setEntry(e.target.value)} />
@@ -205,7 +205,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               </div>
 
               {/* Size + External ID */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Tamaño (lots)</label>
                   <input className={inputClass} type="number" step="any" placeholder="0.01" value={size} onChange={(e) => setSize(e.target.value)} />
@@ -217,7 +217,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               </div>
 
               {/* Risk % + Risk USD */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Riesgo en % del capital</label>
                   <input className={inputClass} type="number" step="0.1" min="0.1" max="10" value={riskPct} onChange={(e) => handleRiskPctChange(e.target.value)} required />
@@ -229,7 +229,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
               </div>
 
               {/* Risk Calc */}
-              <div className="grid grid-cols-3 gap-3 bg-[#14161e] border border-[#252833] rounded-lg p-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#14161e] border border-[#252833] rounded-lg p-3">
                 <div>
                   <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] mb-1 font-mono">Riesgo total</div>
                   <div className="font-mono text-[13px] font-bold text-[#f87171]">
@@ -255,7 +255,7 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
                 <div className="text-[10px] uppercase tracking-[1.5px] text-[#71717a] font-semibold mb-3 font-mono">
                   Calculadora de ratio - precio TP
                 </div>
-                <div className="grid grid-cols-3 gap-3 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                   <div>
                     <div className="text-[10px] text-[#52525b] mb-1 font-mono">Ratio (ej: 1, 3, 8)</div>
                     <input className={`${inputClass} !py-1.5 !text-[12px]`} type="number" step="any" min="0.1" value={ratio} onChange={(e) => setRatio(e.target.value)} />

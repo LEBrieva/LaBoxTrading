@@ -17,7 +17,7 @@ export default async function TradesPage({
 
   if (!activeAccountId) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="flex flex-col items-center justify-center py-20 gap-2">
           <span className="text-2xl text-[#252833]">◈</span>
           <p className="text-[12px] text-[#52525b] tracking-[2px] uppercase">
@@ -35,7 +35,7 @@ export default async function TradesPage({
   const params = await searchParams;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase">
           Trades

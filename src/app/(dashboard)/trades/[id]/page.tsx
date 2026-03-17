@@ -31,18 +31,18 @@ export default async function TradeDetailPage({
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/trades" className="p-2 rounded-lg text-[#6b7485] hover:text-[#e8eaf0] hover:bg-[#181c23] transition-colors">
+    <div className="p-4 md:p-8 max-w-3xl space-y-6">
+      <div className="flex items-center gap-3 md:gap-4">
+        <Link href="/trades" className="p-2 rounded-lg text-[#6b7485] hover:text-[#e8eaf0] hover:bg-[#181c23] transition-colors shrink-0">
           <ArrowLeft className="size-4" />
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isLong ? (
             <ArrowUpRight className="size-5 text-green-500" />
           ) : (
             <ArrowDownRight className="size-5 text-red-500" />
           )}
-          <h1 className="text-2xl font-bold font-mono">{trade.pair}</h1>
+          <h1 className="text-xl md:text-2xl font-bold font-mono">{trade.pair}</h1>
           <Badge variant={isLong ? "default" : "destructive"}>{trade.direction}</Badge>
           <Badge variant={trade.status === "OPEN" ? "outline" : "secondary"}>{trade.status}</Badge>
         </div>
@@ -130,8 +130,8 @@ export default async function TradeDetailPage({
         <div className="space-y-3">
           {trade.positions.map((pos) => (
             <Card key={pos.id}>
-              <CardContent className="py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-medium">{pos.label}</span>
                   <Badge
                     variant={
@@ -196,7 +196,7 @@ export default async function TradeDetailPage({
               <img
                 src={trade.imageUrl}
                 alt="Trade screenshot"
-                className="rounded-md max-w-full"
+                className="rounded-md max-w-full h-auto"
               />
             </CardContent>
           </Card>

@@ -71,7 +71,7 @@ export function AccountEditDialog({
       }}
     >
       <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[420px] max-w-[95vw] animate-in fade-in-0 zoom-in-95">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#252833]">
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-[#252833]">
           <span className="text-base font-extrabold tracking-tight text-[#d4d4d8]">
             Editar cuenta
           </span>
@@ -83,7 +83,7 @@ export function AccountEditDialog({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
           <div className="space-y-1.5">
             <label className={labelClass}>Nombre</label>
             <input

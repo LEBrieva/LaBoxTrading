@@ -10,7 +10,7 @@ export default async function AccountsPage() {
     cookieStore.get("activeAccountId")?.value || accounts[0]?.id || "";
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase">
           Cuentas

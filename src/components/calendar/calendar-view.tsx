@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getCalendarData } from "@/lib/actions/stats";
+import { CalendarListView } from "@/components/calendar/calendar-list-view";
 
 interface CalendarViewProps {
   initialData: Record<string, { trades: number; pnl: number }>;
@@ -105,7 +106,7 @@ export function CalendarView({
         </button>
 
         <div className="text-center">
-          <h2 className="text-lg font-bold text-[#d4d4d8] tracking-wide">
+          <h2 className="text-lg md:text-2xl font-bold text-[#d4d4d8] tracking-wide">
             {MONTHS[month]} {year}
           </h2>
           {monthTrades > 0 && (
@@ -153,7 +154,7 @@ export function CalendarView({
       )}
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-2 mb-2">
+      <div className="hidden md:grid grid-cols-7 gap-2 mb-2">
         {WEEKDAYS.map((wd) => (
           <div
             key={wd}
@@ -165,7 +166,7 @@ export function CalendarView({
       </div>
 
       {/* Days grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="hidden md:grid grid-cols-7 gap-2">
         {days.map((day, idx) => {
           if (day === null) return <div key={`pad-${idx}`} />;
 
@@ -231,6 +232,9 @@ export function CalendarView({
           );
         })}
       </div>
+
+      {/* Mobile list view */}
+      <CalendarListView data={data} year={year} month={month} />
     </div>
   );
 }
