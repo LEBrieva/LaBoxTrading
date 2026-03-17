@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  authId    String    @unique @map("auth_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  accounts  Account[]
+
+  @@map("users")
+}
+
+model Account {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  broker         String?
+  initialCapital Float    @map("initial_capital")
+  currentCapital Float    @map("current_capital")
+  targetCapital  Float    @map("target_capital")
+  currency       String   @default("USD")
+  walletAddress  String?  @map("wallet_address")
+  walletNetwork  String?  @map("wallet_network")
+  createdAt      DateTime @default(now()) @map("created_at")
+  trades         Trade[]
+
+  @@map("accounts")
+}
+
+model Trade {
+  id         String      @id @default(cuid())
+  accountId  String      @map("account_id")
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  pair       String
+  direction  Direction
+  entry      Float?
+  stopLoss   Float?      @map("stop_loss")
+  size       Float?
+  riskUsd    Float       @map("risk_usd")
+  riskPct    Float       @map("risk_pct")
+  externalId String?     @map("external_id")
+  notes      String?
+  imageUrl   String?     @map("image_url")
+  openedAt   DateTime    @default(now()) @map("opened_at")
+  closedAt   DateTime?   @map("closed_at")
+  status     TradeStatus @default(OPEN)
+  positions  Position[]
+
+  @@map("trades")
+}
+
+model Position {
+  id         String         @id @default(cuid())
+  tradeId    String         @map("trade_id")
+  trade      Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  label      String
+  status     PositionStatus @default(OPEN)
+  pnl        Float          @default(0)
+  closedAt   DateTime?      @map("closed_at")
+  isPartial  Boolean        @default(false) @map("is_partial")
+  partialPct Float?         @map("partial_pct")
+
+  @@map("positions")
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+}
+
+enum PositionStatus {
+  OPEN
+  TP
+  SL
+  BE
+  PARTIAL
+}
