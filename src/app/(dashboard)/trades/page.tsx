@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { getTrades } from "@/lib/actions/trades";
+import { getAccountStats } from "@/lib/actions/stats";
 import { TradesList } from "@/components/trades/trades-list";
+import { TradeForm } from "@/components/trades/trade-form";
 
 export default async function TradesPage({
   searchParams,
@@ -26,14 +28,20 @@ export default async function TradesPage({
     );
   }
 
-  const trades = await getTrades(activeAccountId);
+  const [trades, stats] = await Promise.all([
+    getTrades(activeAccountId),
+    getAccountStats(activeAccountId),
+  ]);
   const params = await searchParams;
 
   return (
     <div className="p-8">
-      <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase mb-6">
-        Trades
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase">
+          Trades
+        </h1>
+        <TradeForm accountId={activeAccountId} currentCapital={stats.currentCapital} />
+      </div>
       <TradesList
         trades={trades}
         initialDateFrom={params.from || ""}
