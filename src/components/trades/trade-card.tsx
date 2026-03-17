@@ -197,7 +197,7 @@ export function TradeCard({
           </div>
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
-              Tamano
+              Tamaño
             </span>
             <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
               {size ?? "—"}

@@ -100,16 +100,23 @@ export async function getTrade(id: string) {
 }
 
 export async function updateTrade(id: string, data: {
-  notes?: string;
-  imageUrl?: string;
-  externalId?: string;
+  entry?: number | null;
+  stopLoss?: number | null;
+  notes?: string | null;
+  imageUrl?: string | null;
+  externalId?: string | null;
+  openedAt?: string;
 }) {
   // Verify ownership through getTrade
   await getTrade(id);
 
+  const { openedAt, ...rest } = data;
   const trade = await prisma.trade.update({
     where: { id },
-    data,
+    data: {
+      ...rest,
+      ...(openedAt !== undefined && { openedAt: new Date(openedAt) }),
+    },
   });
   revalidatePath("/");
   revalidatePath("/trades");
@@ -145,6 +152,15 @@ export async function closePosition(
       partialPct: partialPct || null,
     },
   });
+
+  // If PARTIAL, reduce trade size proportionally
+  if (isPartial && partialPct && position.trade.size != null) {
+    const remaining = position.trade.size * (1 - partialPct / 100);
+    await prisma.trade.update({
+      where: { id: position.tradeId },
+      data: { size: Math.round(remaining * 1e8) / 1e8 },
+    });
+  }
 
   // If SL, close ALL open positions of this trade
   if (result === "SL") {
