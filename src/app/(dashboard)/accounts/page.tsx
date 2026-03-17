@@ -1,9 +1,13 @@
+import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { AccountFormDialog } from "@/components/accounts/account-form-dialog";
 import { AccountCard } from "@/components/accounts/account-card";
 
 export default async function AccountsPage() {
   const accounts = await getAccounts();
+  const cookieStore = await cookies();
+  const activeAccountId =
+    cookieStore.get("activeAccountId")?.value || accounts[0]?.id || "";
 
   return (
     <div className="p-8">
@@ -24,7 +28,11 @@ export default async function AccountsPage() {
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
           {accounts.map((account) => (
-            <AccountCard key={account.id} account={account} />
+            <AccountCard
+              key={account.id}
+              account={account}
+              isActive={account.id === activeAccountId}
+            />
           ))}
         </div>
       )}

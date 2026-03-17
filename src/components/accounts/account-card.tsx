@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatCurrency, calcProgressPct } from "@/lib/calculations";
 import { AccountEditDialog } from "./account-edit-dialog";
+import { useToast } from "@/components/ui/toast";
 
 interface Account {
   id: string;
@@ -16,8 +17,22 @@ interface Account {
   walletNetwork: string | null;
 }
 
-export function AccountCard({ account }: { account: Account }) {
+export function AccountCard({
+  account,
+  isActive,
+}: {
+  account: Account;
+  isActive: boolean;
+}) {
   const [editOpen, setEditOpen] = useState(false);
+  const { show } = useToast();
+
+  function copyWallet(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!account.walletAddress) return;
+    navigator.clipboard.writeText(account.walletAddress);
+    show("Dirección copiada al portapapeles");
+  }
 
   const progress = calcProgressPct(
     account.currentCapital,
@@ -31,18 +46,44 @@ export function AccountCard({ account }: { account: Account }) {
     <>
       <div
         onClick={() => setEditOpen(true)}
-        className="bg-[#0e1015] border border-[#252833] rounded-lg overflow-hidden cursor-pointer hover:border-[#2f3340] transition-colors"
+        className={`bg-[#0e1015] rounded-lg overflow-hidden cursor-pointer transition-colors ${
+          isActive
+            ? "border-2 border-[#5eead4]/40 hover:border-[#5eead4]/60"
+            : "border border-[#252833] hover:border-[#2f3340]"
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#252833]">
-          <span className="text-[#d4d4d8] font-bold text-base tracking-wide">
-            {account.name}
-          </span>
           <div className="flex items-center gap-2">
+            {isActive && (
+              <span className="w-2 h-2 rounded-full bg-[#5eead4] shrink-0" />
+            )}
+            <span className="text-[#d4d4d8] font-bold text-base">
+              {account.name}
+            </span>
             {account.broker && (
               <span className="text-[10px] uppercase tracking-[2px] text-[#52525b] font-mono">
                 {account.broker}
               </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {account.walletAddress && (
+              <button
+                onClick={copyWallet}
+                className="flex items-center gap-1.5 bg-[#14161e] rounded px-2 py-1 hover:bg-[#1a1d27] transition-colors cursor-pointer"
+                title="Copiar dirección"
+              >
+                {account.walletNetwork && (
+                  <span className="text-[8px] uppercase tracking-[1px] text-[#5eead4] font-bold font-mono">
+                    {account.walletNetwork}
+                  </span>
+                )}
+                <span className="text-[10px] text-[#71717a] font-mono max-w-[100px] truncate">
+                  {account.walletAddress}
+                </span>
+                <span className="text-[10px] text-[#52525b]">⧉</span>
+              </button>
             )}
             <span className="text-[10px] text-[#52525b]">✎</span>
           </div>
@@ -66,20 +107,6 @@ export function AccountCard({ account }: { account: Account }) {
               {pnlIsPositive ? "+" : ""}${Math.abs(pnl).toFixed(2)}
             </div>
           </div>
-
-          {/* Wallet */}
-          {account.walletAddress && (
-            <div className="flex items-center gap-2 bg-[#14161e] rounded-lg px-3 py-2">
-              {account.walletNetwork && (
-                <span className="text-[9px] uppercase tracking-[1px] text-[#5eead4] font-bold font-mono">
-                  {account.walletNetwork}
-                </span>
-              )}
-              <span className="text-[11px] text-[#71717a] font-mono truncate">
-                {account.walletAddress}
-              </span>
-            </div>
-          )}
 
           {/* Inicio / Objetivo */}
           <div className="flex justify-between text-[10px] text-[#71717a] font-mono">
