@@ -10,7 +10,9 @@ interface Position {
   id: string;
   label: string;
   status: string;
+  size: number | null;
   pnl: number;
+  closePrice: number | null;
   isPartial: boolean;
   partialPct: number | null;
   closedAt: Date | null;

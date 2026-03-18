@@ -82,6 +82,7 @@ model Position {
   trade      Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
   label      String
   status     PositionStatus @default(OPEN)
+  size       Float?
   pnl        Float          @default(0)
   closePrice Float?         @map("close_price")
   closedAt   DateTime?      @map("closed_at")

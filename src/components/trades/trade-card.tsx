@@ -10,7 +10,9 @@ interface Position {
   id: string;
   label: string;
   status: string;
+  size: number | null;
   pnl: number;
+  closePrice: number | null;
   isPartial: boolean;
   partialPct: number | null;
   closedAt: Date | null;
@@ -124,15 +126,60 @@ export function TradeCard({
     <>
       <div
         onClick={() => setDrawerOpen(true)}
-        className="bg-[#0e1015] border border-[#252833] rounded-lg overflow-hidden cursor-pointer transition-colors duration-200 hover:border-[#2f3340]"
+        className={`rounded-lg overflow-hidden cursor-pointer transition-colors duration-200 ${
+          status === "OPEN"
+            ? "border border-[#5eead4]/15 hover:border-[#5eead4]/30"
+            : "border border-[#252833] hover:border-[#2f3340]"
+        }`}
         style={{
-          borderLeftWidth: "3px",
-          borderLeftColor: dirColor,
+          backgroundColor: isLong ? "rgba(96,165,250,0.03)" : "rgba(251,191,36,0.03)",
+          borderLeftWidth: "0",
         }}
       >
+        <div className="flex">
+          {/* Side label */}
+          <div
+            className="relative flex items-center justify-center shrink-0"
+            style={{
+              width: "22px",
+              backgroundColor: status === "OPEN" ? "rgba(94,234,212,0.08)" : `${dirColor}08`,
+              borderRight: status === "OPEN" ? "1px solid rgba(94,234,212,0.25)" : `1px solid ${dirColor}20`,
+            }}
+          >
+            <span
+              className="absolute text-[10px] font-black uppercase tracking-[6px] whitespace-nowrap"
+              style={{
+                color: status === "OPEN" ? "#5eead4" : "#52525b",
+                writingMode: "vertical-rl",
+                transform: "rotate(180deg)",
+              }}
+            >
+              {status === "OPEN" ? "Abierto" : "Cerrado"}
+            </span>
+          </div>
+
+          {/* Card content */}
+          <div className="flex-1 min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 md:px-5 pt-4 pb-2">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center px-4 md:px-5 pt-4 pb-2">
+          {/* Direction badge — left */}
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border shrink-0"
+            style={{
+              color: dirColor,
+              backgroundColor: isLong
+                ? "rgba(74,222,128,0.1)"
+                : "rgba(248,113,113,0.1)",
+              borderColor: isLong
+                ? "rgba(74,222,128,0.25)"
+                : "rgba(248,113,113,0.25)",
+            }}
+          >
+            {isLong ? "Long" : "Short"}
+          </span>
+
+          {/* Pair + ID — center */}
+          <div className="flex-1 flex items-center justify-center gap-2">
             <span className="text-[#d4d4d8] font-black text-base tracking-wide">
               {pair}
             </span>
@@ -142,34 +189,12 @@ export function TradeCard({
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Direction badge */}
-            <span
-              className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
-              style={{
-                color: dirColor,
-                backgroundColor: isLong
-                  ? "rgba(74,222,128,0.1)"
-                  : "rgba(248,113,113,0.1)",
-                borderColor: isLong
-                  ? "rgba(74,222,128,0.25)"
-                  : "rgba(248,113,113,0.25)",
-              }}
-            >
-              {isLong ? "Long" : "Short"}
-            </span>
-            {/* Status / Result badge */}
+
+          {/* Badges — right */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* Status / Result badge (only for closed trades) */}
             {(() => {
-              if (status === "OPEN") {
-                return (
-                  <span
-                    className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
-                    style={{ color: "#5eead4", backgroundColor: "rgba(94,234,212,0.1)", borderColor: "rgba(94,234,212,0.25)" }}
-                  >
-                    Abierto
-                  </span>
-                );
-              }
+              if (status === "OPEN") return null;
               const resultMap: Record<string, { label: string; color: string }> = {
                 TP: { label: "TP", color: "#4ade80" },
                 SL: { label: "SL", color: "#f87171" },
@@ -219,35 +244,66 @@ export function TradeCard({
               {entry?.toFixed(dec) ?? "—"}
             </span>
           </div>
-          <div>
-            {(() => {
-              const isBE =
-                entry != null &&
-                stopLoss != null &&
-                ((isLong && stopLoss >= entry) || (!isLong && stopLoss <= entry));
-              return (
-                <>
-                  <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
-                    {isBE ? "BE" : "SL"}
-                  </span>
-                  <span
-                    className="font-mono text-sm font-semibold"
-                    style={{ color: isBE ? "#fbbf24" : "#f87171" }}
-                  >
-                    {stopLoss?.toFixed(dec) ?? "—"}
-                  </span>
-                </>
-              );
-            })()}
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
-              TP
-            </span>
-            <span className="font-mono text-sm font-semibold text-[#4ade80]">
-              {takeProfit?.toFixed(dec) ?? "—"}
-            </span>
-          </div>
+          {status === "OPEN" ? (
+            <>
+              <div>
+                {(() => {
+                  const isBE =
+                    entry != null &&
+                    stopLoss != null &&
+                    ((isLong && stopLoss >= entry) || (!isLong && stopLoss <= entry));
+                  return (
+                    <>
+                      <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
+                        {isBE ? "BE" : "SL"}
+                      </span>
+                      <span
+                        className="font-mono text-sm font-semibold"
+                        style={{ color: isBE ? "#fbbf24" : "#f87171" }}
+                      >
+                        {stopLoss?.toFixed(dec) ?? "—"}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
+                  TP
+                </span>
+                <span className="font-mono text-sm font-semibold text-[#4ade80]">
+                  {takeProfit?.toFixed(dec) ?? "—"}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
+                  Cierre
+                </span>
+                <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
+                  {(() => {
+                    const closedPos = positions.filter((p) => p.closePrice != null);
+                    if (closedPos.length === 0) return "—";
+                    const lastClosed = closedPos[closedPos.length - 1];
+                    return lastClosed.closePrice!.toFixed(dec);
+                  })()}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
+                  P&L
+                </span>
+                <span
+                  className="font-mono text-sm font-black"
+                  style={{ color: pnlColor(positions.reduce((s, p) => s + p.pnl, 0)) }}
+                >
+                  {formatPnlValue(positions.reduce((s, p) => s + p.pnl, 0))}
+                </span>
+              </div>
+            </>
+          )}
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Tamaño
@@ -314,6 +370,8 @@ export function TradeCard({
             </div>
           );
         })()}
+          </div>
+        </div>
       </div>
 
       <TradeDrawer

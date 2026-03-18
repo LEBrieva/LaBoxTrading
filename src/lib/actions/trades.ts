@@ -276,11 +276,18 @@ export async function closePosition(
   const isPartial = result === "PARTIAL";
   const closedAt = closedAtStr ? new Date(closedAtStr) : new Date();
 
+  // Calculate position size
+  const tradeSize = position.trade.size;
+  const positionSize = isPartial && partialPct && tradeSize != null
+    ? tradeSize * (partialPct / 100)
+    : tradeSize;
+
   // Update position
   await prisma.position.update({
     where: { id: positionId },
     data: {
       status: result,
+      size: positionSize ?? null,
       pnl,
       closePrice: closePrice ?? null,
       closedAt,

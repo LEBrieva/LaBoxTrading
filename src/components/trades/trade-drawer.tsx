@@ -15,7 +15,9 @@ interface Position {
   id: string;
   label: string;
   status: string;
+  size: number | null;
   pnl: number;
+  closePrice: number | null;
   isPartial: boolean;
   partialPct: number | null;
   closedAt: Date | null;
@@ -54,7 +56,7 @@ interface Trade {
   } | null;
 }
 
-type Tab = "info" | "screenshots" | "strategy";
+type Tab = "info" | "screenshots" | "strategy" | "positions";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -109,14 +111,17 @@ export function TradeDrawer({
   const [newCaption, setNewCaption] = useState("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [newPreview, setNewPreview] = useState<string | null>(null);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setEntry(trade.entry?.toString() ?? "");
-    setStopLoss(trade.stopLoss?.toString() ?? "");
-    setTakeProfit(trade.takeProfit?.toString() ?? "");
-    setNotes(trade.notes ?? "");
-    setOpenedAt(toLocalDatetime(trade.openedAt));
+    if (!editing) {
+      setEntry(trade.entry?.toString() ?? "");
+      setStopLoss(trade.stopLoss?.toString() ?? "");
+      setTakeProfit(trade.takeProfit?.toString() ?? "");
+      setNotes(trade.notes ?? "");
+      setOpenedAt(toLocalDatetime(trade.openedAt));
+    }
   }, [trade, editing]);
 
   // Reset tab when drawer opens
@@ -202,8 +207,6 @@ export function TradeDrawer({
       setUploading(false);
     }
   }
-
-  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
   async function handleDeleteImage(imageId: string) {
     setDeletingImageId(imageId);
@@ -314,12 +317,104 @@ export function TradeDrawer({
               {trade.checklist && <span className="ml-1.5 font-mono text-[10px] opacity-60">✓</span>}
               {tab === "strategy" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5eead4]" />}
             </button>
+            {trade.positions.some((p) => p.status !== "OPEN") && (
+              <button
+                onClick={() => { setTab("positions"); setEditing(false); }}
+                className={`px-4 py-2 text-[11px] uppercase tracking-[2px] font-semibold transition-colors relative cursor-pointer ${
+                  tab === "positions" ? "text-[#5eead4]" : "text-[#71717a] hover:text-[#d4d4d8]"
+                }`}
+              >
+                Cierres
+                <span className="ml-1.5 font-mono text-[10px] opacity-60">
+                  {trade.positions.filter((p) => p.status !== "OPEN").length}
+                </span>
+                {tab === "positions" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5eead4]" />}
+              </button>
+            )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-          {tab === "strategy" ? (
+        <div className="relative flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+          {saving && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#08090c]/70 backdrop-blur-sm">
+              <div className="w-6 h-6 border-2 border-[#5eead4]/30 border-t-[#5eead4] rounded-full animate-spin" />
+              <p className="text-[11px] text-[#d4d4d8] font-mono tracking-[1px]">Actualizando...</p>
+            </div>
+          )}
+          {tab === "positions" ? (
+            <div className="space-y-3">
+              {trade.positions
+                .filter((p) => p.status !== "OPEN")
+                .map((p) => {
+                  const resultMap: Record<string, { label: string; color: string }> = {
+                    TP: { label: "TP", color: "#4ade80" },
+                    SL: { label: "SL", color: "#f87171" },
+                    BE: { label: "BE", color: "#fbbf24" },
+                    PARTIAL: { label: "Parcial", color: "#5eead4" },
+                  };
+                  const cfg = resultMap[p.status] || { label: p.status, color: "#71717a" };
+                  return (
+                    <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-[#14161e] border border-[#252833] rounded-lg">
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-[2px] rounded border shrink-0"
+                        style={{ color: cfg.color, backgroundColor: `${cfg.color}15`, borderColor: `${cfg.color}40` }}
+                      >
+                        {cfg.label}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          {p.size != null && (
+                            <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
+                              {p.size}
+                            </span>
+                          )}
+                          {p.closePrice != null && (
+                            <span className="font-mono text-[11px] text-[#71717a]">
+                              a {p.closePrice.toFixed(dec)}
+                            </span>
+                          )}
+                        </div>
+                        {p.closedAt && (
+                          <span className="text-[9px] text-[#52525b] font-mono">
+                            {new Date(p.closedAt).toLocaleDateString("es-AR", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="font-mono text-sm font-black shrink-0"
+                        style={{ color: p.pnl > 0 ? "#4ade80" : p.pnl < 0 ? "#f87171" : "#71717a" }}
+                      >
+                        {p.pnl >= 0 ? "+" : ""}{formatCurrency(p.pnl)}
+                      </span>
+                    </div>
+                  );
+                })}
+              {/* Total */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[#252833]">
+                <span className="text-[10px] uppercase tracking-[2px] text-[#71717a] font-semibold">Total</span>
+                <span
+                  className="font-mono text-base font-black"
+                  style={{
+                    color: (() => {
+                      const total = trade.positions.filter((p) => p.status !== "OPEN").reduce((s, p) => s + p.pnl, 0);
+                      return total > 0 ? "#4ade80" : total < 0 ? "#f87171" : "#71717a";
+                    })(),
+                  }}
+                >
+                  {(() => {
+                    const total = trade.positions.filter((p) => p.status !== "OPEN").reduce((s, p) => s + p.pnl, 0);
+                    return `${total >= 0 ? "+" : ""}${formatCurrency(total)}`;
+                  })()}
+                </span>
+              </div>
+            </div>
+          ) : tab === "strategy" ? (
             <TradeChecklist
               tradeId={trade.id}
               checklist={trade.checklist || null}
