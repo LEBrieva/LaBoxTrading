@@ -78,6 +78,7 @@ model Position {
   label      String
   status     PositionStatus @default(OPEN)
   pnl        Float          @default(0)
+  closePrice Float?         @map("close_price")
   closedAt   DateTime?      @map("closed_at")
   isPartial  Boolean        @default(false) @map("is_partial")
   partialPct Float?         @map("partial_pct")
@@ -101,4 +102,13 @@ enum PositionStatus {
   SL
   BE
   PARTIAL
+}
+
+model Symbol {
+  id       String @id @default(cuid())
+  name     String @unique
+  category String
+  decimals Int    @default(2)
+
+  @@map("symbols")
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createTrade } from "@/lib/actions/trades";
 import { addTradeImage } from "@/lib/actions/trade-images";
@@ -12,15 +12,24 @@ const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
 const labelClass = "text-[10px] uppercase tracking-[1.5px] text-[#71717a] font-semibold font-mono";
 
+interface SymbolItem {
+  id: string;
+  name: string;
+  category: string;
+  decimals: number;
+}
+
 interface TradeFormProps {
   accountId: string;
   currentCapital: number;
+  symbols?: SymbolItem[];
 }
 
-export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
+export function TradeForm({ accountId, currentCapital, symbols = [] }: TradeFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pair, setPair] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [direction, setDirection] = useState<"LONG" | "SHORT">("LONG");
   const [entry, setEntry] = useState("");
   const [stopLoss, setStopLoss] = useState("");
@@ -35,7 +44,23 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const filteredSymbols = pair.length > 0
+    ? symbols.filter((s) => s.name.toLowerCase().includes(pair.toLowerCase()))
+    : symbols;
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function handleRiskPctChange(val: string) {
     setRiskPct(val);
@@ -175,16 +200,39 @@ export function TradeForm({ accountId, currentCapital }: TradeFormProps) {
             <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
               {/* Par + Direccion */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative" ref={suggestionsRef}>
                   <label className={labelClass}>Par / Instrumento</label>
                   <input
                     className={inputClass}
                     placeholder="US500, XAUUSD..."
                     value={pair}
-                    onChange={(e) => setPair(e.target.value)}
+                    onChange={(e) => {
+                      setPair(e.target.value.toUpperCase());
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
                     required
                     autoFocus
+                    autoComplete="off"
                   />
+                  {showSuggestions && filteredSymbols.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-[200px] overflow-y-auto bg-[#1a1d27] border border-[#252833] rounded-lg shadow-xl">
+                      {filteredSymbols.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#252833] transition-colors cursor-pointer"
+                          onClick={() => {
+                            setPair(s.name);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <span className="font-mono text-[13px] text-[#d4d4d8] font-semibold">{s.name}</span>
+                          <span className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">{s.category}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClass}>Direccion</label>

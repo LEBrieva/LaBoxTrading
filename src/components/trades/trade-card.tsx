@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { formatCurrency } from "@/lib/calculations";
+import { useState, useEffect } from "react";
+import { formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
+import { usePrices } from "@/contexts/price-context";
 import { TradeDrawer } from "./trade-drawer";
 import { ClosePositionDialog } from "./close-position-dialog";
 
@@ -94,9 +95,21 @@ export function TradeCard({
   images,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { prices, decimalsMap, subscribePair } = usePrices();
   const isLong = direction === "LONG";
   const dirColor = isLong ? "#4ade80" : "#f87171";
   const openCount = positions.filter((p) => p.status === "OPEN").length;
+  const priceData = prices[pair];
+  const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
+  const unrealizedPnl = entry != null && size != null && livePrice != null
+    ? calcUnrealizedPnl(entry, livePrice, size, direction)
+    : null;
+  const dec = decimalsMap[pair] ?? 2;
+
+  // Auto-subscribe to pair for OPEN trades (client-side, no server refresh needed)
+  useEffect(() => {
+    if (status === "OPEN") subscribePair(pair);
+  }, [status, pair, subscribePair]);
 
   return (
     <>
@@ -136,23 +149,36 @@ export function TradeCard({
             >
               {isLong ? "Long" : "Short"}
             </span>
-            {/* Status badge */}
-            <span
-              className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
-              style={{
-                color: status === "OPEN" ? "#5eead4" : "#71717a",
-                backgroundColor:
-                  status === "OPEN"
-                    ? "rgba(94,234,212,0.1)"
-                    : "rgba(113,113,122,0.06)",
-                borderColor:
-                  status === "OPEN"
-                    ? "rgba(94,234,212,0.25)"
-                    : "rgba(113,113,122,0.2)",
-              }}
-            >
-              {status === "OPEN" ? "Abierto" : "Cerrado"}
-            </span>
+            {/* Status / Result badge */}
+            {(() => {
+              if (status === "OPEN") {
+                return (
+                  <span
+                    className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
+                    style={{ color: "#5eead4", backgroundColor: "rgba(94,234,212,0.1)", borderColor: "rgba(94,234,212,0.25)" }}
+                  >
+                    Abierto
+                  </span>
+                );
+              }
+              const resultMap: Record<string, { label: string; color: string }> = {
+                TP: { label: "TP", color: "#4ade80" },
+                SL: { label: "SL", color: "#f87171" },
+                BE: { label: "BE", color: "#fbbf24" },
+                PARTIAL: { label: "Parcial", color: "#5eead4" },
+              };
+              const posStatuses = positions.map((p) => p.status);
+              const mainResult = posStatuses.find((s) => s !== "OPEN") || "TP";
+              const cfg = resultMap[mainResult] || { label: "Cerrado", color: "#71717a" };
+              return (
+                <span
+                  className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[2px] rounded border"
+                  style={{ color: cfg.color, backgroundColor: `${cfg.color}15`, borderColor: `${cfg.color}40` }}
+                >
+                  {cfg.label}
+                </span>
+              );
+            })()}
             {images.length > 0 && (
               <span
                 title={`${images.length} screenshot${images.length > 1 ? "s" : ""}`}
@@ -190,7 +216,7 @@ export function TradeCard({
               Entrada
             </span>
             <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
-              {entry?.toFixed(2) ?? "—"}
+              {entry?.toFixed(dec) ?? "—"}
             </span>
           </div>
           <div>
@@ -208,7 +234,7 @@ export function TradeCard({
                     className="font-mono text-sm font-semibold"
                     style={{ color: isBE ? "#fbbf24" : "#f87171" }}
                   >
-                    {stopLoss?.toFixed(2) ?? "—"}
+                    {stopLoss?.toFixed(dec) ?? "—"}
                   </span>
                 </>
               );
@@ -219,7 +245,7 @@ export function TradeCard({
               TP
             </span>
             <span className="font-mono text-sm font-semibold text-[#4ade80]">
-              {takeProfit?.toFixed(2) ?? "—"}
+              {takeProfit?.toFixed(dec) ?? "—"}
             </span>
           </div>
           <div>
@@ -232,18 +258,45 @@ export function TradeCard({
           </div>
         </div>
 
-        {/* Close button or P&L result */}
+        {/* Live P&L or static result */}
         {(() => {
           const openPos = positions.find((p) => p.status === "OPEN");
           const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
           if (openPos) {
             return (
-              <div className="px-4 md:px-5 pb-4 pt-2 border-t border-[#252833]" onClick={(e) => e.stopPropagation()}>
-                <ClosePositionDialog
-                  positionId={openPos.id}
-                  positionLabel={pair}
-                  riskUsd={riskUsd}
-                />
+              <div className="px-4 md:px-5 pb-4 pt-2 border-t border-[#252833] space-y-2">
+                {/* Live price + unrealized P&L */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
+                        Precio
+                      </span>
+                      <span className="font-mono text-sm text-[#5eead4] font-semibold">
+                        {livePrice != null ? livePrice.toFixed(dec) : "—"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
+                      P&L
+                    </span>
+                    <span
+                      className="font-mono text-sm font-black"
+                      style={{ color: unrealizedPnl != null ? pnlColor(unrealizedPnl) : "#71717a" }}
+                    >
+                      {unrealizedPnl != null ? formatPnlValue(unrealizedPnl) : "—"}
+                    </span>
+                  </div>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ClosePositionDialog
+                    positionId={openPos.id}
+                    positionLabel={pair}
+                    riskUsd={riskUsd}
+                    livePrice={livePrice}
+                  />
+                </div>
               </div>
             );
           }

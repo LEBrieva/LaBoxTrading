@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { closePosition } from "@/lib/actions/trades";
 
@@ -12,19 +12,30 @@ interface ClosePositionDialogProps {
   positionId: string;
   positionLabel: string;
   riskUsd: number;
+  livePrice?: number | null;
 }
 
 export function ClosePositionDialog({
   positionId,
   positionLabel,
   riskUsd,
+  livePrice,
 }: ClosePositionDialogProps) {
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<"TP" | "SL" | "BE" | "PARTIAL">("TP");
   const [pnl, setPnl] = useState("");
+  const [exitPrice, setExitPrice] = useState("");
   const [partialPct, setPartialPct] = useState("50");
+  const [closedAt, setClosedAt] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Pre-fill exit price with live price when dialog opens
+  useEffect(() => {
+    if (open && livePrice != null && exitPrice === "") {
+      setExitPrice(livePrice.toString());
+    }
+  }, [open, livePrice, exitPrice]);
 
   function handleResultChange(val: "TP" | "SL" | "BE" | "PARTIAL") {
     setResult(val);
@@ -45,12 +56,16 @@ export function ClosePositionDialog({
         positionId,
         result,
         parseFloat(pnl),
-        result === "PARTIAL" ? parseFloat(partialPct) : undefined
+        result === "PARTIAL" ? parseFloat(partialPct) : undefined,
+        closedAt || undefined,
+        exitPrice ? parseFloat(exitPrice) : undefined
       );
       setOpen(false);
+      setExitPrice("");
       router.refresh();
     } catch (err) {
-      console.error(err);
+      console.error("Error closing position:", err);
+      alert("Error al cerrar: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
@@ -77,7 +92,7 @@ export function ClosePositionDialog({
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
-          <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[380px] max-w-[95vw] animate-in fade-in-0 zoom-in-95">
+          <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[380px] max-w-[95vw] max-h-[95vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#252833]">
               <span className="text-base font-extrabold tracking-tight text-[#d4d4d8]">Cerrar {positionLabel}</span>
               <button onClick={() => setOpen(false)} className="text-[#71717a] hover:text-[#d4d4d8] text-lg px-1 transition-colors">
@@ -112,6 +127,18 @@ export function ClosePositionDialog({
               </div>
 
               <div className="space-y-1.5">
+                <label className={labelClass}>Precio de cierre</label>
+                <input
+                  className={inputClass}
+                  type="number"
+                  step="any"
+                  value={exitPrice}
+                  onChange={(e) => setExitPrice(e.target.value)}
+                  placeholder="Precio al cerrar"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className={labelClass}>P&L (USD)</label>
                 <input
                   className={inputClass}
@@ -140,6 +167,17 @@ export function ClosePositionDialog({
                   />
                 </div>
               )}
+
+              <div className="space-y-1.5">
+                <label className={labelClass}>Fecha de cierre (opcional)</label>
+                <input
+                  className={inputClass}
+                  type="datetime-local"
+                  value={closedAt}
+                  onChange={(e) => setClosedAt(e.target.value)}
+                />
+                <p className="text-[9px] text-[#52525b] font-mono">Deja vacio para usar la fecha actual</p>
+              </div>
 
               <div className="flex justify-end gap-3 pt-2 border-t border-[#252833]">
                 <button

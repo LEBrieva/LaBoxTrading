@@ -118,6 +118,8 @@ const PAGE_SIZE = 10;
 
 export async function getTradesPaginated(accountId: string, filters?: {
   status?: "OPEN" | "CLOSED";
+  result?: "TP" | "SL" | "BE";
+  pair?: string;
   from?: string;
   to?: string;
   skip?: number;
@@ -131,6 +133,10 @@ export async function getTradesPaginated(accountId: string, filters?: {
   const where = {
     accountId,
     ...(filters?.status && { status: filters.status }),
+    ...(filters?.result && {
+      positions: { some: { status: filters.result } },
+    }),
+    ...(filters?.pair && { pair: filters.pair }),
     ...(filters?.from && { openedAt: { gte: new Date(filters.from) } }),
     ...(filters?.to && {
       openedAt: {
@@ -218,11 +224,22 @@ export async function updateTrade(id: string, data: {
   return trade;
 }
 
+export async function deleteTrade(id: string) {
+  await getTrade(id);
+
+  await prisma.trade.delete({ where: { id } });
+
+  revalidatePath("/");
+  revalidatePath("/trades");
+}
+
 export async function closePosition(
   positionId: string,
   result: "TP" | "SL" | "BE" | "PARTIAL",
   pnl: number,
-  partialPct?: number
+  partialPct?: number,
+  closedAtStr?: string,
+  closePrice?: number
 ) {
   const position = await prisma.position.findUnique({
     where: { id: positionId },
@@ -234,6 +251,7 @@ export async function closePosition(
   await getTrade(position.tradeId);
 
   const isPartial = result === "PARTIAL";
+  const closedAt = closedAtStr ? new Date(closedAtStr) : new Date();
 
   // Update position
   await prisma.position.update({
@@ -241,7 +259,8 @@ export async function closePosition(
     data: {
       status: result,
       pnl,
-      closedAt: new Date(),
+      closePrice: closePrice ?? null,
+      closedAt,
       isPartial,
       partialPct: partialPct || null,
     },
@@ -266,7 +285,7 @@ export async function closePosition(
       data: {
         status: "SL",
         pnl: 0,
-        closedAt: new Date(),
+        closedAt,
       },
     });
   }
@@ -288,14 +307,11 @@ export async function closePosition(
   });
 
   if (openPositions === 0) {
-    const allPositions = await prisma.position.findMany({
-      where: { tradeId: position.tradeId },
-    });
     await prisma.trade.update({
       where: { id: position.tradeId },
       data: {
         status: "CLOSED",
-        closedAt: new Date(),
+        closedAt,
       },
     });
   }

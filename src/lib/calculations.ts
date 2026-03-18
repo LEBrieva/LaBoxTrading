@@ -55,3 +55,14 @@ export function calcProgressPct(current: number, initial: number, target: number
   if (range === 0) return 0;
   return Math.min(((current - initial) / range) * 100, 100);
 }
+
+export function calcUnrealizedPnl(
+  entry: number,
+  currentPrice: number,
+  size: number,
+  direction: "LONG" | "SHORT"
+): number {
+  return direction === "LONG"
+    ? (currentPrice - entry) * size
+    : (entry - currentPrice) * size;
+}

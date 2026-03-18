@@ -51,6 +51,7 @@ interface Stats {
 }
 
 type StatusFilter = "ALL" | "OPEN" | "CLOSED";
+type ResultFilter = "ALL" | "TP" | "SL" | "BE";
 
 const filterBtnClass = (active: boolean) =>
   `px-3 py-1.5 rounded text-[11px] uppercase tracking-[1.5px] font-semibold transition-colors cursor-pointer ${
@@ -67,6 +68,7 @@ export function TradesList({
   initialStats,
   initialDateFrom = "",
   initialDateTo = "",
+  pairs = [],
 }: {
   accountId: string;
   accountName: string;
@@ -75,23 +77,45 @@ export function TradesList({
   initialStats: Stats;
   initialDateFrom?: string;
   initialDateTo?: string;
+  pairs?: string[];
 }) {
   const [trades, setTrades] = useState<Trade[]>(initialTrades);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [stats, setStats] = useState<Stats>(initialStats);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("ALL");
+  const [pairFilter, setPairFilter] = useState("");
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
+
+  // Sync with server data after router.refresh() — re-fetch with active filters
+  useEffect(() => {
+    if (statusFilter === "ALL" && !dateFrom && !dateTo) {
+      setTrades(initialTrades);
+      setHasMore(initialHasMore);
+      setStats(initialStats);
+    } else {
+      startTransition(async () => {
+        const result = await fetchTrades(0, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+        setTrades(result.trades);
+        setHasMore(result.hasMore);
+        setStats(result.stats);
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTrades, initialHasMore, initialStats]);
   const [isPending, startTransition] = useTransition();
   const [exporting, setExporting] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLoadingMore = useRef(false);
 
-  const hasFilters = statusFilter !== "ALL" || dateFrom || dateTo;
+  const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || dateFrom || dateTo;
 
-  const fetchTrades = useCallback(async (skip: number, status: StatusFilter, from: string, to: string) => {
+  const fetchTrades = useCallback(async (skip: number, status: StatusFilter, resultF: ResultFilter, pair: string, from: string, to: string) => {
     const result = await getTradesPaginated(accountId, {
       status: status === "ALL" ? undefined : status,
+      result: resultF === "ALL" ? undefined : resultF,
+      pair: pair || undefined,
       from: from || undefined,
       to: to || undefined,
       skip,
@@ -155,12 +179,12 @@ export function TradesList({
   // Reset when filters change
   useEffect(() => {
     startTransition(async () => {
-      const result = await fetchTrades(0, statusFilter, dateFrom, dateTo);
+      const result = await fetchTrades(0, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
       setTrades(result.trades);
       setHasMore(result.hasMore);
       setStats(result.stats);
     });
-  }, [statusFilter, dateFrom, dateTo, fetchTrades]);
+  }, [statusFilter, resultFilter, pairFilter, dateFrom, dateTo, fetchTrades]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -172,7 +196,7 @@ export function TradesList({
         if (entries[0].isIntersecting && hasMore && !isPending && !isLoadingMore.current) {
           isLoadingMore.current = true;
           startTransition(async () => {
-            const result = await fetchTrades(trades.length, statusFilter, dateFrom, dateTo);
+            const result = await fetchTrades(trades.length, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
             setTrades((prev) => [...prev, ...result.trades]);
             setHasMore(result.hasMore);
             isLoadingMore.current = false;
@@ -184,7 +208,7 @@ export function TradesList({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isPending, trades.length, statusFilter, dateFrom, dateTo, fetchTrades]);
+  }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, dateFrom, dateTo, fetchTrades]);
 
   const sign = stats.totalPnl >= 0 ? "+" : "";
   const wr = (stats.wins + stats.losses) > 0
@@ -217,6 +241,54 @@ export function TradesList({
             Cerrados
           </button>
         </div>
+
+        {/* Separator */}
+        <div className="hidden md:block w-px h-6 bg-[#252833]" />
+
+        {/* Result filter */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setResultFilter("ALL")}
+            className={filterBtnClass(resultFilter === "ALL")}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setResultFilter("TP")}
+            className={`${filterBtnClass(resultFilter === "TP")} ${resultFilter === "TP" ? "!bg-[#4ade80]/10 !text-[#4ade80] !border-[#4ade80]/30" : ""}`}
+          >
+            TP
+          </button>
+          <button
+            onClick={() => setResultFilter("SL")}
+            className={`${filterBtnClass(resultFilter === "SL")} ${resultFilter === "SL" ? "!bg-[#f87171]/10 !text-[#f87171] !border-[#f87171]/30" : ""}`}
+          >
+            SL
+          </button>
+          <button
+            onClick={() => setResultFilter("BE")}
+            className={`${filterBtnClass(resultFilter === "BE")} ${resultFilter === "BE" ? "!bg-[#fbbf24]/10 !text-[#fbbf24] !border-[#fbbf24]/30" : ""}`}
+          >
+            BE
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="hidden md:block w-px h-6 bg-[#252833]" />
+
+        {/* Pair filter */}
+        {pairs.length > 0 && (
+          <select
+            value={pairFilter}
+            onChange={(e) => setPairFilter(e.target.value)}
+            className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
+          >
+            <option value="">Todos los pares</option>
+            {pairs.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        )}
 
         {/* Separator */}
         <div className="hidden md:block w-px h-6 bg-[#252833]" />
@@ -261,6 +333,8 @@ export function TradesList({
           <button
             onClick={() => {
               setStatusFilter("ALL");
+              setResultFilter("ALL");
+              setPairFilter("");
               setDateFrom("");
               setDateTo("");
             }}

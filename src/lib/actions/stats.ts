@@ -89,29 +89,37 @@ export async function getEquityData(accountId: string) {
   });
   if (!account) throw new Error("Cuenta no encontrada");
 
-  const positions = await prisma.position.findMany({
-    where: {
-      trade: { accountId },
-      status: { not: "OPEN" },
-    },
+  // Get closed trades (not positions) with their total P&L
+  const trades = await prisma.trade.findMany({
+    where: { accountId, status: "CLOSED", closedAt: { not: null } },
+    include: { positions: true },
     orderBy: { closedAt: "asc" },
-    select: {
-      pnl: true,
-      closedAt: true,
-    },
   });
 
+  // Aggregate P&L by day
+  const dailyPnl: Record<string, { pnl: number; trades: number }> = {};
+  for (const trade of trades) {
+    const day = trade.closedAt!.toISOString().split("T")[0];
+    if (!dailyPnl[day]) dailyPnl[day] = { pnl: 0, trades: 0 };
+    dailyPnl[day].pnl += trade.positions.reduce((sum, p) => sum + p.pnl, 0);
+    dailyPnl[day].trades++;
+  }
+
+  // Sort days and build running capital
+  const sortedDays = Object.keys(dailyPnl).sort();
+
   let runningCapital = account.initialCapital;
-  const dataPoints = [
-    { date: account.createdAt.toISOString(), capital: runningCapital, pnl: 0 },
+  const dataPoints: { date: string; capital: number; pnl: number; trades: number }[] = [
+    { date: sortedDays[0] ?? account.createdAt.toISOString().split("T")[0], capital: runningCapital, pnl: 0, trades: 0 },
   ];
 
-  for (const pos of positions) {
-    runningCapital += pos.pnl;
+  for (const day of sortedDays) {
+    runningCapital += dailyPnl[day].pnl;
     dataPoints.push({
-      date: pos.closedAt!.toISOString(),
-      capital: runningCapital,
-      pnl: pos.pnl,
+      date: day,
+      capital: Math.round(runningCapital * 100) / 100,
+      pnl: Math.round(dailyPnl[day].pnl * 100) / 100,
+      trades: dailyPnl[day].trades,
     });
   }
 
@@ -147,6 +155,44 @@ export async function getCalendarData(accountId: string, year: number, month: nu
   }
 
   return dayMap;
+}
+
+export async function getDailyStats(accountId: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const trades = await prisma.trade.findMany({
+    where: { accountId, status: "CLOSED", closedAt: { not: null } },
+    include: { positions: true },
+    orderBy: { closedAt: "asc" },
+  });
+
+  const daily: Record<string, {
+    trades: number;
+    wins: number;
+    losses: number;
+    pnl: number;
+    best: number;
+    worst: number;
+  }> = {};
+
+  for (const trade of trades) {
+    const key = trade.closedAt!.toISOString().split("T")[0];
+    if (!daily[key]) daily[key] = { trades: 0, wins: 0, losses: 0, pnl: 0, best: 0, worst: 0 };
+
+    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
+    daily[key].trades++;
+    daily[key].pnl += tradePnl;
+    if (tradePnl > 0) daily[key].wins++;
+    else if (tradePnl < 0) daily[key].losses++;
+    if (tradePnl > daily[key].best) daily[key].best = tradePnl;
+    if (tradePnl < daily[key].worst) daily[key].worst = tradePnl;
+  }
+
+  return daily;
 }
 
 export async function getWeeklyMonthlyStats(accountId: string) {
@@ -186,4 +232,49 @@ export async function getWeeklyMonthlyStats(accountId: string) {
   }
 
   return monthly;
+}
+
+export async function getWeeklyStats(accountId: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const trades = await prisma.trade.findMany({
+    where: { accountId, status: "CLOSED" },
+    include: { positions: true },
+    orderBy: { closedAt: "asc" },
+  });
+
+  const weekly: Record<string, {
+    trades: number;
+    wins: number;
+    losses: number;
+    pnl: number;
+    best: number;
+    worst: number;
+  }> = {};
+
+  for (const trade of trades) {
+    if (!trade.closedAt) continue;
+    // Get Monday of the week
+    const d = new Date(trade.closedAt);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    const key = monday.toISOString().split("T")[0];
+
+    if (!weekly[key]) weekly[key] = { trades: 0, wins: 0, losses: 0, pnl: 0, best: 0, worst: 0 };
+
+    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
+    weekly[key].trades++;
+    weekly[key].pnl += tradePnl;
+    if (tradePnl > 0) weekly[key].wins++;
+    else if (tradePnl < 0) weekly[key].losses++;
+    if (tradePnl > weekly[key].best) weekly[key].best = tradePnl;
+    if (tradePnl < weekly[key].worst) weekly[key].worst = tradePnl;
+  }
+
+  return weekly;
 }

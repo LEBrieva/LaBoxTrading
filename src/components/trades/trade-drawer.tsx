@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { formatPnl, formatCurrency } from "@/lib/calculations";
-import { updateTrade } from "@/lib/actions/trades";
+import { formatPnl, formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
+import { usePrices } from "@/contexts/price-context";
+import { updateTrade, deleteTrade } from "@/lib/actions/trades";
 import { addTradeImage, deleteTradeImage } from "@/lib/actions/trade-images";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
@@ -68,12 +69,19 @@ export function TradeDrawer({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { prices, decimalsMap } = usePrices();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN");
   const isLong = trade.direction === "LONG";
   const firstClosed = trade.positions[0]?.status;
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
   const isOpen = trade.status === "OPEN";
+  const priceData = prices[trade.pair];
+  const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
+  const unrealizedPnl = trade.entry != null && trade.size != null && livePrice != null
+    ? calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction)
+    : null;
+  const dec = decimalsMap[trade.pair] ?? 2;
 
   const [tab, setTab] = useState<Tab>("info");
   const [editing, setEditing] = useState(false);
@@ -83,6 +91,9 @@ export function TradeDrawer({
   const [takeProfit, setTakeProfit] = useState(trade.takeProfit?.toString() ?? "");
   const [notes, setNotes] = useState(trade.notes ?? "");
   const [openedAt, setOpenedAt] = useState(toLocalDatetime(trade.openedAt));
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Screenshot tab state
   const [uploading, setUploading] = useState(false);
@@ -104,6 +115,7 @@ export function TradeDrawer({
     if (open) {
       setTab("info");
       setEditing(false);
+      setConfirmDelete(false);
     }
   }, [open]);
 
@@ -287,19 +299,49 @@ export function TradeDrawer({
           {tab === "info" ? (
             <>
               {/* P&L */}
-              <div className="text-center py-3">
-                <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">P&L Total</div>
-                <div className="font-mono text-3xl font-bold" style={{ color: pnlColor }}>
-                  {formatPnl(totalPnl)}
+              {isOpen && unrealizedPnl != null ? (
+                <div className="text-center py-3 space-y-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">P&L Unrealized</div>
+                    <div
+                      className="font-mono text-3xl font-bold"
+                      style={{ color: unrealizedPnl >= 0 ? "#4ade80" : "#f87171" }}
+                    >
+                      {formatPnl(unrealizedPnl)}
+                    </div>
+                  </div>
+                  <div className="flex justify-center gap-4">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Bid</div>
+                      <div className="font-mono text-sm text-[#5eead4]">
+                        {priceData ? priceData.bid.toFixed(dec) : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Ask</div>
+                      <div className="font-mono text-sm text-[#5eead4]">
+                        {priceData ? priceData.ask.toFixed(dec) : "—"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-3">
+                  <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">
+                    {isOpen ? "P&L" : "P&L Total"}
+                  </div>
+                  <div className="font-mono text-3xl font-bold" style={{ color: pnlColor }}>
+                    {isOpen ? "—" : formatPnl(totalPnl)}
+                  </div>
+                </div>
+              )}
 
               {/* Trade info grid */}
               <div className="grid grid-cols-2 gap-3">
                 {editing ? (
                   <EditCell label="Entrada" type="number" value={entry} onChange={setEntry} placeholder="Precio entrada" />
                 ) : (
-                  <InfoCell label="Entrada" value={trade.entry?.toFixed(2) ?? "\u2014"} />
+                  <InfoCell label="Entrada" value={trade.entry?.toFixed(dec) ?? "\u2014"} />
                 )}
 
                 {editing ? (
@@ -314,7 +356,7 @@ export function TradeDrawer({
                         ? "BE"
                         : "SL"
                     }
-                    value={trade.stopLoss?.toFixed(2) ?? "\u2014"}
+                    value={trade.stopLoss?.toFixed(dec) ?? "\u2014"}
                     color={
                       trade.entry != null &&
                       trade.stopLoss != null &&
@@ -329,7 +371,7 @@ export function TradeDrawer({
                 {editing ? (
                   <EditCell label="Take Profit" type="number" value={takeProfit} onChange={setTakeProfit} placeholder="Precio TP" />
                 ) : (
-                  <InfoCell label="TP" value={trade.takeProfit?.toFixed(2) ?? "\u2014"} color="#4ade80" />
+                  <InfoCell label="TP" value={trade.takeProfit?.toFixed(dec) ?? "\u2014"} color="#4ade80" />
                 )}
 
                 <InfoCell label="Riesgo" value={`${formatCurrency(trade.riskUsd)} (${trade.riskPct.toFixed(1)}%)`} color="#f87171" />
@@ -407,10 +449,55 @@ export function TradeDrawer({
                       positionId={pos.id}
                       positionLabel={trade.pair}
                       riskUsd={trade.riskUsd}
+                      livePrice={livePrice}
                     />
                   </div>
                 );
               })()}
+
+              {/* Delete trade */}
+              {!editing && (
+                <div className="pt-3 border-t border-[#252833]">
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="w-full py-2 rounded-lg text-[11px] uppercase tracking-[1.5px] font-semibold text-[#52525b] hover:text-[#f87171] transition-colors cursor-pointer"
+                    >
+                      Eliminar trade
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-[#f87171] font-mono">Seguro?</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="px-3 py-1.5 rounded-lg border border-[#252833] text-[#71717a] text-[11px] font-semibold hover:text-[#d4d4d8] transition-colors cursor-pointer"
+                        >
+                          No
+                        </button>
+                        <button
+                          disabled={deleting}
+                          onClick={async () => {
+                            setDeleting(true);
+                            try {
+                              await deleteTrade(trade.id);
+                              onClose();
+                              router.refresh();
+                            } catch (err) {
+                              console.error(err);
+                              setDeleting(false);
+                              setConfirmDelete(false);
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#f87171] text-[#08090c] text-[11px] font-bold hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {deleting ? "Borrando..." : "Si, eliminar"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             /* ── Screenshots Tab ── */
