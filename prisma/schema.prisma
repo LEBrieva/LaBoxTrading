@@ -57,6 +57,8 @@ model Trade {
   positions  Position[]
   images     TradeImage[]
 
+  @@index([accountId, status])
+  @@index([accountId, openedAt])
   @@map("trades")
 }
 
@@ -68,6 +70,7 @@ model TradeImage {
   caption   String?
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([tradeId])
   @@map("trade_images")
 }
 
@@ -83,6 +86,7 @@ model Position {
   isPartial  Boolean        @default(false) @map("is_partial")
   partialPct Float?         @map("partial_pct")
 
+  @@index([tradeId])
   @@map("positions")
 }
 
