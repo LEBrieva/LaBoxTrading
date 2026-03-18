@@ -154,7 +154,7 @@ export async function getTradesPaginated(accountId: string, filters?: {
     prisma.trade.findMany({
       where,
       include: { positions: true, images: { orderBy: { createdAt: "asc" } }, checklist: { include: { strategy: true } } },
-      orderBy: { openedAt: "desc" },
+      orderBy: [{ status: "asc" }, { openedAt: "desc" }],
       take: PAGE_SIZE + 1,
       ...(filters?.cursor && {
         cursor: { id: filters.cursor },

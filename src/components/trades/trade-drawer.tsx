@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPnl, formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
 import { usePrices } from "@/contexts/price-context";
@@ -80,6 +80,7 @@ export function TradeDrawer({
   strategies?: { id: string; name: string; fields: unknown }[];
 }) {
   const router = useRouter();
+  const [isRefreshing, startTransition] = useTransition();
   const { prices, decimalsMap } = usePrices();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN");
@@ -164,7 +165,7 @@ export function TradeDrawer({
         openedAt,
       });
       setEditing(false);
-      router.refresh();
+      startTransition(() => startTransition(() => router.refresh()));
     } catch (err) {
       console.error(err);
     } finally {
@@ -200,7 +201,7 @@ export function TradeDrawer({
       const url = await uploadTradeScreenshot(user.id, newFile);
       await addTradeImage(trade.id, url, newCaption || undefined);
       resetUploadForm();
-      router.refresh();
+      startTransition(() => router.refresh());
     } catch (err) {
       console.error(err);
     } finally {
@@ -212,7 +213,7 @@ export function TradeDrawer({
     setDeletingImageId(imageId);
     try {
       await deleteTradeImage(imageId);
-      router.refresh();
+      startTransition(() => router.refresh());
     } catch (err) {
       console.error(err);
       setDeletingImageId(null);
@@ -336,7 +337,7 @@ export function TradeDrawer({
 
         {/* Content */}
         <div className="relative flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-          {saving && (
+          {(saving || (isRefreshing && !editing)) && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#08090c]/70 backdrop-blur-sm">
               <div className="w-6 h-6 border-2 border-[#5eead4]/30 border-t-[#5eead4] rounded-full animate-spin" />
               <p className="text-[11px] text-[#d4d4d8] font-mono tracking-[1px]">Actualizando...</p>
@@ -606,7 +607,7 @@ export function TradeDrawer({
                             try {
                               await deleteTrade(trade.id);
                               onClose();
-                              router.refresh();
+                              startTransition(() => router.refresh());
                             } catch (err) {
                               console.error(err);
                               setDeleting(false);
