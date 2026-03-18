@@ -23,7 +23,7 @@ model Account {
   userId         String   @map("user_id")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
-  broker         String?
+  broker         Broker   @default(SIMPLEFX)
   initialCapital Float    @map("initial_capital")
   currentCapital Float    @map("current_capital")
   targetCapital  Float    @map("target_capital")
@@ -86,6 +86,11 @@ model Position {
   @@map("positions")
 }
 
+enum Broker {
+  SIMPLEFX
+  BITGET
+}
+
 enum Direction {
   LONG
   SHORT
@@ -106,9 +111,11 @@ enum PositionStatus {
 
 model Symbol {
   id       String @id @default(cuid())
-  name     String @unique
+  name     String
+  broker   Broker @default(SIMPLEFX)
   category String
   decimals Int    @default(2)
 
+  @@unique([name, broker])
   @@map("symbols")
 }

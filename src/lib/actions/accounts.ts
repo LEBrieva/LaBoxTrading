@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { Broker } from "@/generated/prisma/client";
 import { getUser } from "./auth";
 import { revalidatePath } from "next/cache";
 
@@ -21,7 +22,7 @@ export async function getAccount(id: string) {
 
 export async function createAccount(data: {
   name: string;
-  broker?: string;
+  broker: Broker;
   initialCapital: number;
   targetCapital: number;
   currency?: string;
@@ -33,7 +34,7 @@ export async function createAccount(data: {
     data: {
       userId: user.id,
       name: data.name,
-      broker: data.broker || null,
+      broker: data.broker,
       initialCapital: data.initialCapital,
       currentCapital: data.initialCapital,
       targetCapital: data.targetCapital,
@@ -51,7 +52,7 @@ export async function updateAccount(
   id: string,
   data: {
     name?: string;
-    broker?: string | null;
+    broker?: Broker;
     targetCapital?: number;
     currency?: string;
     walletAddress?: string | null;

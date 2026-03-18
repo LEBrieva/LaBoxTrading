@@ -29,7 +29,7 @@ export function AccountEditDialog({
 }) {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(account.name);
-  const [broker, setBroker] = useState(account.broker || "");
+  const [broker, setBroker] = useState(account.broker || "SIMPLEFX");
   const [targetCapital, setTargetCapital] = useState(
     account.targetCapital.toString()
   );
@@ -47,7 +47,7 @@ export function AccountEditDialog({
     try {
       await updateAccount(account.id, {
         name,
-        broker: broker || null,
+        broker: broker as "SIMPLEFX" | "BITGET",
         targetCapital: parseFloat(targetCapital),
         walletNetwork: walletNetwork || null,
         walletAddress: walletAddress || null,
@@ -95,13 +95,23 @@ export function AccountEditDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelClass}>Broker (opcional)</label>
-            <input
-              className={inputClass}
-              placeholder="SimpleFX, Deriv..."
-              value={broker}
-              onChange={(e) => setBroker(e.target.value)}
-            />
+            <label className={labelClass}>Broker</label>
+            <div className="flex gap-2">
+              {(["SIMPLEFX", "BITGET"] as const).map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setBroker(b)}
+                  className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold font-mono tracking-wide transition-colors cursor-pointer ${
+                    broker === b
+                      ? "bg-[#5eead4]/10 border-[#5eead4]/30 text-[#5eead4]"
+                      : "border-[#252833] text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e]"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className={labelClass}>Capital Objetivo (USD)</label>

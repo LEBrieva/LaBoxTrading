@@ -4,106 +4,158 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-const symbols = [
+type Broker = "SIMPLEFX" | "BITGET";
+
+interface SymbolEntry {
+  name: string;
+  broker: Broker;
+  category: string;
+  decimals: number;
+}
+
+// ── SimpleFX symbols ──────────────────────────────────────────────
+const simplefxSymbols: SymbolEntry[] = [
   // Indices
-  { name: "US100", category: "indices", decimals: 2 },
-  { name: "US500", category: "indices", decimals: 2 },
-  { name: "US30", category: "indices", decimals: 0 },
-  { name: "US2000", category: "indices", decimals: 1 },
-  { name: "DE40", category: "indices", decimals: 1 },
-  { name: "FR40", category: "indices", decimals: 1 },
-  { name: "UK100", category: "indices", decimals: 1 },
-  { name: "EU50", category: "indices", decimals: 0 },
-  { name: "CH20", category: "indices", decimals: 1 },
-  { name: "JP225", category: "indices", decimals: 0 },
-  { name: "HK50", category: "indices", decimals: 0 },
-  { name: "AU200", category: "indices", decimals: 0 },
-  { name: "ES35", category: "indices", decimals: 0 },
-  { name: "VIX", category: "indices", decimals: 2 },
+  { name: "US100", broker: "SIMPLEFX", category: "indices", decimals: 2 },
+  { name: "US500", broker: "SIMPLEFX", category: "indices", decimals: 2 },
+  { name: "US30", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "US2000", broker: "SIMPLEFX", category: "indices", decimals: 1 },
+  { name: "DE40", broker: "SIMPLEFX", category: "indices", decimals: 1 },
+  { name: "FR40", broker: "SIMPLEFX", category: "indices", decimals: 1 },
+  { name: "UK100", broker: "SIMPLEFX", category: "indices", decimals: 1 },
+  { name: "EU50", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "CH20", broker: "SIMPLEFX", category: "indices", decimals: 1 },
+  { name: "JP225", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "HK50", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "AU200", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "ES35", broker: "SIMPLEFX", category: "indices", decimals: 0 },
+  { name: "VIX", broker: "SIMPLEFX", category: "indices", decimals: 2 },
 
   // Forex majors
-  { name: "EURUSD", category: "forex", decimals: 5 },
-  { name: "GBPUSD", category: "forex", decimals: 5 },
-  { name: "USDJPY", category: "forex", decimals: 3 },
-  { name: "USDCAD", category: "forex", decimals: 5 },
-  { name: "AUDUSD", category: "forex", decimals: 5 },
-  { name: "NZDUSD", category: "forex", decimals: 5 },
-  { name: "USDCHF", category: "forex", decimals: 5 },
+  { name: "EURUSD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "GBPUSD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDJPY", broker: "SIMPLEFX", category: "forex", decimals: 3 },
+  { name: "USDCAD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "AUDUSD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "NZDUSD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDCHF", broker: "SIMPLEFX", category: "forex", decimals: 5 },
 
   // Forex minors
-  { name: "EURGBP", category: "forex", decimals: 5 },
-  { name: "EURJPY", category: "forex", decimals: 3 },
-  { name: "EURCHF", category: "forex", decimals: 5 },
-  { name: "GBPJPY", category: "forex", decimals: 3 },
-  { name: "AUDCAD", category: "forex", decimals: 5 },
-  { name: "AUDCHF", category: "forex", decimals: 5 },
-  { name: "AUDJPY", category: "forex", decimals: 3 },
-  { name: "CADCHF", category: "forex", decimals: 5 },
-  { name: "NZDJPY", category: "forex", decimals: 3 },
+  { name: "EURGBP", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "EURJPY", broker: "SIMPLEFX", category: "forex", decimals: 3 },
+  { name: "EURCHF", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "GBPJPY", broker: "SIMPLEFX", category: "forex", decimals: 3 },
+  { name: "AUDCAD", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "AUDCHF", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "AUDJPY", broker: "SIMPLEFX", category: "forex", decimals: 3 },
+  { name: "CADCHF", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "NZDJPY", broker: "SIMPLEFX", category: "forex", decimals: 3 },
 
   // Forex exotic
-  { name: "USDMXN", category: "forex", decimals: 5 },
-  { name: "USDTRY", category: "forex", decimals: 5 },
-  { name: "USDZAR", category: "forex", decimals: 5 },
-  { name: "USDPLN", category: "forex", decimals: 5 },
-  { name: "USDNOK", category: "forex", decimals: 5 },
-  { name: "USDCNH", category: "forex", decimals: 5 },
-  { name: "USDKRW", category: "forex", decimals: 2 },
+  { name: "USDMXN", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDTRY", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDZAR", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDPLN", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDNOK", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDCNH", broker: "SIMPLEFX", category: "forex", decimals: 5 },
+  { name: "USDKRW", broker: "SIMPLEFX", category: "forex", decimals: 2 },
 
   // Dollar Index
-  { name: "USDINDEX", category: "forex", decimals: 3 },
+  { name: "USDINDEX", broker: "SIMPLEFX", category: "forex", decimals: 3 },
 
   // Metals
-  { name: "XAUUSD", category: "metals", decimals: 2 },
-  { name: "XAGUSD", category: "metals", decimals: 4 },
-  { name: "COPPER", category: "metals", decimals: 4 },
-  { name: "PALL", category: "metals", decimals: 1 },
-  { name: "PLAT", category: "metals", decimals: 1 },
+  { name: "XAUUSD", broker: "SIMPLEFX", category: "metals", decimals: 2 },
+  { name: "XAGUSD", broker: "SIMPLEFX", category: "metals", decimals: 4 },
+  { name: "COPPER", broker: "SIMPLEFX", category: "metals", decimals: 4 },
+  { name: "PALL", broker: "SIMPLEFX", category: "metals", decimals: 1 },
+  { name: "PLAT", broker: "SIMPLEFX", category: "metals", decimals: 1 },
 
   // Energy
-  { name: "OIL", category: "energy", decimals: 3 },
-  { name: "BRENT", category: "energy", decimals: 3 },
-  { name: "NATGAS", category: "energy", decimals: 3 },
+  { name: "OIL", broker: "SIMPLEFX", category: "energy", decimals: 3 },
+  { name: "BRENT", broker: "SIMPLEFX", category: "energy", decimals: 3 },
+  { name: "NATGAS", broker: "SIMPLEFX", category: "energy", decimals: 3 },
 
   // Agriculture
-  { name: "COCOA", category: "commodities", decimals: 0 },
-  { name: "COFFEE", category: "commodities", decimals: 2 },
-  { name: "CORN", category: "commodities", decimals: 2 },
-  { name: "COTTON", category: "commodities", decimals: 2 },
-  { name: "SOYBEAN", category: "commodities", decimals: 2 },
-  { name: "SUGAR", category: "commodities", decimals: 2 },
-  { name: "WHEAT", category: "commodities", decimals: 2 },
-  { name: "SOYOIL", category: "commodities", decimals: 2 },
+  { name: "COCOA", broker: "SIMPLEFX", category: "commodities", decimals: 0 },
+  { name: "COFFEE", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "CORN", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "COTTON", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "SOYBEAN", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "SUGAR", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "WHEAT", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
+  { name: "SOYOIL", broker: "SIMPLEFX", category: "commodities", decimals: 2 },
 
   // Crypto
-  { name: "BTCUSD", category: "crypto", decimals: 2 },
-  { name: "ETHUSD", category: "crypto", decimals: 2 },
-  { name: "SOLUSD", category: "crypto", decimals: 2 },
-  { name: "XRPUSD", category: "crypto", decimals: 4 },
-  { name: "BNBUSD", category: "crypto", decimals: 2 },
-  { name: "ADAUSD", category: "crypto", decimals: 4 },
-  { name: "DOTUSD", category: "crypto", decimals: 3 },
-  { name: "LINKUSD", category: "crypto", decimals: 3 },
-  { name: "LTCUSD", category: "crypto", decimals: 2 },
+  { name: "BTCUSD", broker: "SIMPLEFX", category: "crypto", decimals: 2 },
+  { name: "ETHUSD", broker: "SIMPLEFX", category: "crypto", decimals: 2 },
+  { name: "SOLUSD", broker: "SIMPLEFX", category: "crypto", decimals: 2 },
+  { name: "XRPUSD", broker: "SIMPLEFX", category: "crypto", decimals: 4 },
+  { name: "BNBUSD", broker: "SIMPLEFX", category: "crypto", decimals: 2 },
+  { name: "ADAUSD", broker: "SIMPLEFX", category: "crypto", decimals: 4 },
+  { name: "DOTUSD", broker: "SIMPLEFX", category: "crypto", decimals: 3 },
+  { name: "LINKUSD", broker: "SIMPLEFX", category: "crypto", decimals: 3 },
+  { name: "LTCUSD", broker: "SIMPLEFX", category: "crypto", decimals: 2 },
 
   // Bonds
-  { name: "BUND", category: "bonds", decimals: 2 },
-  { name: "GILT", category: "bonds", decimals: 2 },
-  { name: "TNOTE", category: "bonds", decimals: 6 },
+  { name: "BUND", broker: "SIMPLEFX", category: "bonds", decimals: 2 },
+  { name: "GILT", broker: "SIMPLEFX", category: "bonds", decimals: 2 },
+  { name: "TNOTE", broker: "SIMPLEFX", category: "bonds", decimals: 6 },
 ];
 
-async function main() {
-  console.log(`Seeding ${symbols.length} symbols...`);
+// ── Bitget symbols (crypto spot USDT pairs) ───────────────────────
+const bitgetSymbols: SymbolEntry[] = [
+  // Major
+  { name: "BTCUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
+  { name: "ETHUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
+  { name: "SOLUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
+  { name: "XRPUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "BNBUSDT", broker: "BITGET", category: "crypto", decimals: 1 },
+  { name: "ADAUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "DOTUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "LINKUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "LTCUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
 
-  for (const symbol of symbols) {
+  // Popular alts
+  { name: "DOGEUSDT", broker: "BITGET", category: "crypto", decimals: 5 },
+  { name: "AVAXUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
+  { name: "SHIBUSDT", broker: "BITGET", category: "crypto", decimals: 9 },
+  { name: "UNIUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "ATOMUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "FILUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "APTUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "ARBUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "OPUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "SUIUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "NEARUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "AAVEUSDT", broker: "BITGET", category: "crypto", decimals: 2 },
+  { name: "RENDERUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "FETUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "INJUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+  { name: "TIAUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "SEIUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "PEPEUSDT", broker: "BITGET", category: "crypto", decimals: 9 },
+  { name: "WIFUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+
+  // Stablecoins / DeFi
+  { name: "MATICUSDT", broker: "BITGET", category: "crypto", decimals: 4 },
+  { name: "TRXUSDT", broker: "BITGET", category: "crypto", decimals: 5 },
+  { name: "TONUSDT", broker: "BITGET", category: "crypto", decimals: 3 },
+];
+
+const allSymbols = [...simplefxSymbols, ...bitgetSymbols];
+
+async function main() {
+  console.log(`Seeding ${allSymbols.length} symbols (${simplefxSymbols.length} SimpleFX + ${bitgetSymbols.length} Bitget)...`);
+
+  for (const symbol of allSymbols) {
     await prisma.symbol.upsert({
-      where: { name: symbol.name },
+      where: { name_broker: { name: symbol.name, broker: symbol.broker } },
       update: { category: symbol.category, decimals: symbol.decimals },
       create: symbol,
     });
   }
 
-  console.log(`✓ ${symbols.length} symbols seeded.`);
+  console.log(`✓ ${allSymbols.length} symbols seeded.`);
 }
 
 main()

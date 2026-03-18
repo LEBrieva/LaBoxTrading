@@ -29,6 +29,7 @@ export default async function TradesPage({
     );
   }
 
+  const account = accounts.find((a) => a.id === activeAccountId);
   const params = await searchParams;
   const [{ trades, hasMore, stats: tradeStats }, accountStats, symbols, usedPairs] = await Promise.all([
     getTradesPaginated(activeAccountId, {
@@ -36,7 +37,7 @@ export default async function TradesPage({
       to: params.to || undefined,
     }),
     getAccountStats(activeAccountId),
-    getSymbols(),
+    getSymbols(account?.broker || "SIMPLEFX"),
     getUsedPairs(activeAccountId),
   ]);
 

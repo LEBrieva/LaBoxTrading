@@ -6,14 +6,16 @@ import type { ReactNode } from "react";
 export function PriceProviderWrapper({
   openPairs,
   decimalsMap,
+  broker,
   children,
 }: {
   openPairs: string[];
   decimalsMap: Record<string, number>;
+  broker: string;
   children: ReactNode;
 }) {
   return (
-    <PriceProvider openPairs={openPairs} decimalsMap={decimalsMap}>
+    <PriceProvider openPairs={openPairs} decimalsMap={decimalsMap} broker={broker}>
       {children}
     </PriceProvider>
   );

@@ -1,17 +1,20 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { Broker } from "@/generated/prisma/client";
 import { getUser } from "./auth";
 import { cookies } from "next/headers";
 
-export async function getSymbols() {
+export async function getSymbols(broker?: Broker) {
   return prisma.symbol.findMany({
+    where: broker ? { broker } : undefined,
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 }
 
-export async function getSymbolDecimalsMap(): Promise<Record<string, number>> {
+export async function getSymbolDecimalsMap(broker?: Broker): Promise<Record<string, number>> {
   const symbols = await prisma.symbol.findMany({
+    where: broker ? { broker } : undefined,
     select: { name: true, decimals: true },
   });
   return Object.fromEntries(symbols.map((s) => [s.name, s.decimals]));

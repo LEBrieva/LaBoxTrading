@@ -9,17 +9,19 @@ import { ConnectionStatus } from "@/components/layout/connection-status";
 import { formatCurrency } from "@/lib/calculations";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [accounts, openPairs, decimalsMap] = await Promise.all([
-    getAccounts(),
-    getOpenTradePairs(),
-    getSymbolDecimalsMap(),
-  ]);
+  const accounts = await getAccounts();
   const cookieStore = await cookies();
   const activeAccountId = cookieStore.get("activeAccountId")?.value || accounts[0]?.id || "";
   const account = accounts.find(a => a.id === activeAccountId) || accounts[0];
+  const broker = account?.broker || "SIMPLEFX";
+
+  const [openPairs, decimalsMap] = await Promise.all([
+    getOpenTradePairs(),
+    getSymbolDecimalsMap(broker),
+  ]);
 
   return (
-    <PriceProviderWrapper openPairs={openPairs} decimalsMap={decimalsMap}>
+    <PriceProviderWrapper openPairs={openPairs} decimalsMap={decimalsMap} broker={broker}>
       <div className="min-h-screen bg-[#08090c]">
         <header className="sticky top-0 z-50 bg-[#0e1015] border-b border-[#252833]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 py-3 md:px-8 md:py-5 gap-2 md:gap-0">

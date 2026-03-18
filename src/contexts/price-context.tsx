@@ -1,7 +1,11 @@
 "use client";
 
 import { createContext, useContext, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { SimpleFXClient, type ConnectionStatus, type SimpleFXQuote } from "@/lib/websocket/simplefx-client";
+import type { ConnectionStatus, PriceClient, PriceQuote } from "@/lib/websocket/types";
+import { createPriceClient } from "@/lib/websocket/factory";
+import { toWsSymbol, fromWsSymbol, isSymbolSupported } from "@/lib/websocket/symbol-mapping";
+
+export type { ConnectionStatus };
 
 export interface PriceData {
   bid: number;
@@ -32,28 +36,40 @@ const THROTTLE_MS = 1000;
 export function PriceProvider({
   openPairs,
   decimalsMap,
+  broker,
   children,
 }: {
   openPairs: string[];
   decimalsMap: Record<string, number>;
+  broker: string;
   children: ReactNode;
 }) {
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
 
   const pricesRef = useRef<Record<string, PriceData>>({});
-  const clientRef = useRef<SimpleFXClient | null>(null);
+  const clientRef = useRef<PriceClient | null>(null);
   const prevPairsRef = useRef<string[]>([]);
   const clientPairsRef = useRef<Set<string>>(new Set());
+  const brokerRef = useRef(broker);
 
-  // Initialize client once
+  // Create/recreate client when broker changes
   useEffect(() => {
-    const client = new SimpleFXClient({
-      onQuote: (quote: SimpleFXQuote) => {
-        pricesRef.current[quote.s] = {
-          bid: quote.b,
-          ask: quote.a,
-          timestamp: quote.t,
+    brokerRef.current = broker;
+
+    // Clear stale prices from previous broker
+    pricesRef.current = {};
+    setPrices({});
+    prevPairsRef.current = [];
+    clientPairsRef.current = new Set();
+
+    const client = createPriceClient(broker, {
+      onQuote: (quote: PriceQuote) => {
+        const appSymbol = fromWsSymbol(quote.symbol, brokerRef.current);
+        pricesRef.current[appSymbol] = {
+          bid: quote.bid,
+          ask: quote.ask,
+          timestamp: quote.timestamp,
         };
       },
       onStatusChange: setStatus,
@@ -73,29 +89,31 @@ export function PriceProvider({
       client.disconnect();
       clientRef.current = null;
     };
-  }, []);
+  }, [broker]);
 
-  // Client-side pair subscription (for immediate updates without server refresh)
   const subscribePair = useCallback((pair: string) => {
     const client = clientRef.current;
+    const currentBroker = brokerRef.current;
     if (!client || clientPairsRef.current.has(pair)) return;
+    if (!isSymbolSupported(pair, currentBroker)) return;
 
     clientPairsRef.current.add(pair);
 
-    // Ensure connected
     if (status === "disconnected") {
       client.connect();
     }
-    client.subscribe([pair]);
+    client.subscribe([toWsSymbol(pair, currentBroker)]);
   }, [status]);
 
-  // Manage subscriptions when openPairs changes (server-side refresh)
+  // Manage subscriptions when openPairs changes
   useEffect(() => {
     const client = clientRef.current;
+    const currentBroker = brokerRef.current;
     if (!client) return;
 
-    // Merge server pairs + client pairs
-    const allPairs = [...new Set([...openPairs, ...clientPairsRef.current])];
+    // Filter to supported symbols and merge with client pairs
+    const supportedPairs = openPairs.filter((p) => isSymbolSupported(p, currentBroker));
+    const allPairs = [...new Set([...supportedPairs, ...clientPairsRef.current])];
     const prev = new Set(prevPairsRef.current);
     const next = new Set(allPairs);
 
@@ -107,11 +125,11 @@ export function PriceProvider({
     }
 
     if (toAdd.length > 0) {
-      client.subscribe(toAdd);
+      client.subscribe(toAdd.map((p) => toWsSymbol(p, currentBroker)));
     }
 
     if (toRemove.length > 0) {
-      client.unsubscribe(toRemove);
+      client.unsubscribe(toRemove.map((p) => toWsSymbol(p, currentBroker)));
     }
 
     if (allPairs.length === 0 && prevPairsRef.current.length > 0) {
@@ -122,8 +140,7 @@ export function PriceProvider({
 
     prevPairsRef.current = allPairs;
 
-    // Sync client pairs with server — remove client pairs now in server list
-    for (const p of openPairs) {
+    for (const p of supportedPairs) {
       clientPairsRef.current.delete(p);
     }
   }, [openPairs]);

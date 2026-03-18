@@ -13,7 +13,7 @@ export function AccountFormDialog() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [broker, setBroker] = useState("");
+  const [broker, setBroker] = useState("SIMPLEFX");
   const [initialCapital, setInitialCapital] = useState("");
   const [targetCapital, setTargetCapital] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
@@ -26,7 +26,7 @@ export function AccountFormDialog() {
     try {
       await createAccount({
         name,
-        broker: broker || undefined,
+        broker: broker as "SIMPLEFX" | "BITGET",
         initialCapital: parseFloat(initialCapital),
         targetCapital: parseFloat(targetCapital),
         walletAddress: walletAddress || undefined,
@@ -34,7 +34,7 @@ export function AccountFormDialog() {
       });
       setOpen(false);
       setName("");
-      setBroker("");
+      setBroker("SIMPLEFX");
       setInitialCapital("");
       setTargetCapital("");
       setWalletAddress("");
@@ -89,13 +89,23 @@ export function AccountFormDialog() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className={labelClass}>Broker (opcional)</label>
-                <input
-                  className={inputClass}
-                  placeholder="SimpleFX, Deriv..."
-                  value={broker}
-                  onChange={(e) => setBroker(e.target.value)}
-                />
+                <label className={labelClass}>Broker</label>
+                <div className="flex gap-2">
+                  {(["SIMPLEFX", "BITGET"] as const).map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setBroker(b)}
+                      className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold font-mono tracking-wide transition-colors cursor-pointer ${
+                        broker === b
+                          ? "bg-[#5eead4]/10 border-[#5eead4]/30 text-[#5eead4]"
+                          : "border-[#252833] text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e]"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
