@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { setActiveAccount } from "@/lib/actions/accounts";
 
 interface Account {
   id: string;
@@ -18,9 +19,9 @@ export function AccountSwitcher({
 }) {
   const router = useRouter();
 
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const accountId = e.target.value;
-    document.cookie = `activeAccountId=${accountId};path=/;max-age=${60 * 60 * 24 * 365}`;
+    await setActiveAccount(accountId);
     router.refresh();
   }
 

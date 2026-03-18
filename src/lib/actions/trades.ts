@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getUser } from "./auth";
 import { revalidatePath } from "next/cache";
 import { Direction } from "@/generated/prisma/client";
+import { createTradeSchema, updateTradeSchema, closePositionSchema } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-export async function createTrade(data: {
+export async function createTrade(raw: {
   accountId: string;
   pair: string;
   direction: Direction;
@@ -20,7 +22,9 @@ export async function createTrade(data: {
   imageUrl?: string;
   openedAt?: string;
 }) {
+  const data = createTradeSchema.parse(raw);
   const user = await getUser();
+  checkRateLimit(user.id, "createTrade", 30, 60_000);
   // Verify account belongs to user
   const account = await prisma.account.findFirst({
     where: { id: data.accountId, userId: user.id },
@@ -122,7 +126,7 @@ export async function getTradesPaginated(accountId: string, filters?: {
   pair?: string;
   from?: string;
   to?: string;
-  skip?: number;
+  cursor?: string;
 }) {
   const user = await getUser();
   const account = await prisma.account.findFirst({
@@ -146,38 +150,51 @@ export async function getTradesPaginated(accountId: string, filters?: {
     }),
   };
 
-  const [trades, total, statsRaw] = await Promise.all([
+  const [trades, total, statsAgg] = await Promise.all([
     prisma.trade.findMany({
       where,
       include: { positions: true, images: { orderBy: { createdAt: "asc" } } },
       orderBy: { openedAt: "desc" },
-      skip: filters?.skip || 0,
-      take: PAGE_SIZE,
+      take: PAGE_SIZE + 1,
+      ...(filters?.cursor && {
+        cursor: { id: filters.cursor },
+        skip: 1,
+      }),
     }),
     prisma.trade.count({ where }),
-    prisma.trade.findMany({
-      where,
-      select: { status: true, positions: { select: { pnl: true } } },
-    }),
+    prisma.$queryRaw<
+      { open_count: bigint; wins: bigint; losses: bigint; total_pnl: number }[]
+    >`
+      SELECT
+        COUNT(*) FILTER (WHERE t.status = 'OPEN')::bigint AS open_count,
+        COUNT(*) FILTER (WHERE t.status = 'CLOSED' AND sub_pnl > 0)::bigint AS wins,
+        COUNT(*) FILTER (WHERE t.status = 'CLOSED' AND sub_pnl < 0)::bigint AS losses,
+        COALESCE(SUM(CASE WHEN t.status = 'CLOSED' THEN sub_pnl ELSE 0 END), 0)::float AS total_pnl
+      FROM trades t
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(p.pnl), 0) AS sub_pnl
+        FROM positions p WHERE p.trade_id = t.id
+      ) pnl ON true
+      WHERE t.account_id = ${accountId}
+    `,
   ]);
 
-  const openCount = statsRaw.filter((t) => t.status === "OPEN").length;
-  const closedTrades = statsRaw.filter((t) => t.status === "CLOSED");
-  const wins = closedTrades.filter(
-    (t) => t.positions.reduce((s, p) => s + p.pnl, 0) > 0
-  ).length;
-  const losses = closedTrades.filter(
-    (t) => t.positions.reduce((s, p) => s + p.pnl, 0) < 0
-  ).length;
-  const totalPnl = closedTrades.reduce(
-    (s, t) => s + t.positions.reduce((sp, p) => sp + p.pnl, 0), 0
-  );
+  const hasMore = trades.length > PAGE_SIZE;
+  if (hasMore) trades.pop();
+
+  const agg = statsAgg[0];
 
   return {
     trades,
     total,
-    hasMore: (filters?.skip || 0) + PAGE_SIZE < total,
-    stats: { total, openCount, wins, losses, totalPnl },
+    hasMore,
+    stats: {
+      total,
+      openCount: Number(agg?.open_count ?? 0),
+      wins: Number(agg?.wins ?? 0),
+      losses: Number(agg?.losses ?? 0),
+      totalPnl: agg?.total_pnl ?? 0,
+    },
   };
 }
 
@@ -198,7 +215,7 @@ export async function getTrade(id: string) {
   return trade;
 }
 
-export async function updateTrade(id: string, data: {
+export async function updateTrade(id: string, raw: {
   entry?: number | null;
   stopLoss?: number | null;
   takeProfit?: number | null;
@@ -207,8 +224,8 @@ export async function updateTrade(id: string, data: {
   externalId?: string | null;
   openedAt?: string;
 }) {
-  // Verify ownership through getTrade
-  await getTrade(id);
+  const data = updateTradeSchema.parse(raw);
+  await getTrade(id); // verifies ownership
 
   const { openedAt, ...rest } = data;
   const trade = await prisma.trade.update({
@@ -225,6 +242,8 @@ export async function updateTrade(id: string, data: {
 }
 
 export async function deleteTrade(id: string) {
+  const user = await getUser();
+  checkRateLimit(user.id, "deleteTrade", 10, 60_000);
   await getTrade(id);
 
   await prisma.trade.delete({ where: { id } });
@@ -241,6 +260,10 @@ export async function closePosition(
   closedAtStr?: string,
   closePrice?: number
 ) {
+  closePositionSchema.parse({ positionId, result, pnl, partialPct, closedAt: closedAtStr, closePrice });
+  const user = await getUser();
+  checkRateLimit(user.id, "closePosition", 20, 60_000);
+
   const position = await prisma.position.findUnique({
     where: { id: positionId },
     include: { trade: { include: { positions: true, account: true } } },

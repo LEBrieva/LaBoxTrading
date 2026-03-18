@@ -96,7 +96,7 @@ export function TradesList({
       setStats(initialStats);
     } else {
       startTransition(async () => {
-        const result = await fetchTrades(0, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
         setTrades(result.trades);
         setHasMore(result.hasMore);
         setStats(result.stats);
@@ -111,14 +111,14 @@ export function TradesList({
 
   const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || dateFrom || dateTo;
 
-  const fetchTrades = useCallback(async (skip: number, status: StatusFilter, resultF: ResultFilter, pair: string, from: string, to: string) => {
+  const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, from: string, to: string) => {
     const result = await getTradesPaginated(accountId, {
       status: status === "ALL" ? undefined : status,
       result: resultF === "ALL" ? undefined : resultF,
       pair: pair || undefined,
       from: from || undefined,
       to: to || undefined,
-      skip,
+      cursor,
     });
     return result;
   }, [accountId]);
@@ -179,7 +179,7 @@ export function TradesList({
   // Reset when filters change
   useEffect(() => {
     startTransition(async () => {
-      const result = await fetchTrades(0, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+      const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
       setTrades(result.trades);
       setHasMore(result.hasMore);
       setStats(result.stats);
@@ -196,7 +196,8 @@ export function TradesList({
         if (entries[0].isIntersecting && hasMore && !isPending && !isLoadingMore.current) {
           isLoadingMore.current = true;
           startTransition(async () => {
-            const result = await fetchTrades(trades.length, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+            const lastId = trades[trades.length - 1]?.id;
+            const result = await fetchTrades(lastId, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
             setTrades((prev) => [...prev, ...result.trades]);
             setHasMore(result.hasMore);
             isLoadingMore.current = false;

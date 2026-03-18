@@ -1,9 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import type { Broker } from "@/generated/prisma/client";
 import { getUser } from "./auth";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { createAccountSchema, updateAccountSchema } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function getAccounts() {
   const user = await getUser();
@@ -20,16 +22,18 @@ export async function getAccount(id: string) {
   });
 }
 
-export async function createAccount(data: {
+export async function createAccount(raw: {
   name: string;
-  broker: Broker;
+  broker: string;
   initialCapital: number;
   targetCapital: number;
   currency?: string;
   walletAddress?: string;
   walletNetwork?: string;
 }) {
+  const data = createAccountSchema.parse(raw);
   const user = await getUser();
+  checkRateLimit(user.id, "createAccount", 10, 60_000);
   const account = await prisma.account.create({
     data: {
       userId: user.id,
@@ -50,16 +54,18 @@ export async function createAccount(data: {
 
 export async function updateAccount(
   id: string,
-  data: {
+  raw: {
     name?: string;
-    broker?: Broker;
+    broker?: string;
     targetCapital?: number;
     currency?: string;
     walletAddress?: string | null;
     walletNetwork?: string | null;
   }
 ) {
+  const data = updateAccountSchema.parse(raw);
   const user = await getUser();
+  checkRateLimit(user.id, "updateAccount", 20, 60_000);
   const account = await prisma.account.updateMany({
     where: { id, userId: user.id },
     data,
@@ -69,8 +75,29 @@ export async function updateAccount(
   return account;
 }
 
+export async function setActiveAccount(accountId: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+    select: { id: true },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const cookieStore = await cookies();
+  cookieStore.set("activeAccountId", account.id, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  revalidatePath("/");
+}
+
 export async function deleteAccount(id: string) {
   const user = await getUser();
+  checkRateLimit(user.id, "deleteAccount", 5, 60_000);
   await prisma.account.deleteMany({
     where: { id, userId: user.id },
   });

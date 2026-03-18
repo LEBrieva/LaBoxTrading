@@ -3,24 +3,65 @@
 import { prisma } from "@/lib/prisma";
 import { getUser } from "./auth";
 
-export async function getAccountStats(accountId: string) {
+async function verifyAccountOwnership(accountId: string) {
   const user = await getUser();
   const account = await prisma.account.findFirst({
     where: { id: accountId, userId: user.id },
   });
   if (!account) throw new Error("Cuenta no encontrada");
+  return account;
+}
 
-  const trades = await prisma.trade.findMany({
-    where: { accountId, status: "CLOSED" },
-    include: { positions: true },
-    orderBy: { closedAt: "asc" },
-  });
+// Helper: get closed trades with pre-computed PnL (single query with SUM)
+async function getTradesWithPnl(accountId: string) {
+  const rows = await prisma.$queryRaw<
+    { id: string; closed_at: Date; pnl: number }[]
+  >`
+    SELECT t.id, t.closed_at, COALESCE(SUM(p.pnl), 0)::float AS pnl
+    FROM trades t
+    LEFT JOIN positions p ON p.trade_id = t.id
+    WHERE t.account_id = ${accountId}
+      AND t.status = 'CLOSED'
+      AND t.closed_at IS NOT NULL
+    GROUP BY t.id, t.closed_at
+    ORDER BY t.closed_at ASC
+  `;
+  return rows;
+}
 
-  let wins = 0;
-  let losses = 0;
-  let totalPnl = 0;
-  let bestTrade = 0;
-  let worstTrade = 0;
+export async function getAccountStats(accountId: string) {
+  const account = await verifyAccountOwnership(accountId);
+
+  // Aggregate counts in DB
+  const [agg] = await prisma.$queryRaw<
+    { total: bigint; wins: bigint; losses: bigint; total_pnl: number; best: number; worst: number }[]
+  >`
+    SELECT
+      COUNT(*)::bigint AS total,
+      COUNT(*) FILTER (WHERE trade_pnl > 0)::bigint AS wins,
+      COUNT(*) FILTER (WHERE trade_pnl < 0)::bigint AS losses,
+      COALESCE(SUM(trade_pnl), 0)::float AS total_pnl,
+      COALESCE(MAX(trade_pnl), 0)::float AS best,
+      COALESCE(MIN(trade_pnl), 0)::float AS worst
+    FROM (
+      SELECT t.id, COALESCE(SUM(p.pnl), 0) AS trade_pnl
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId} AND t.status = 'CLOSED'
+      GROUP BY t.id
+    ) sub
+  `;
+
+  const total = Number(agg?.total ?? 0);
+  const wins = Number(agg?.wins ?? 0);
+  const losses = Number(agg?.losses ?? 0);
+  const totalPnl = agg?.total_pnl ?? 0;
+  const bestTrade = agg?.best ?? 0;
+  const worstTrade = agg?.worst ?? 0;
+
+  // Streaks need ordered iteration — use lightweight query (no positions loaded)
+  const trades = await getTradesWithPnl(accountId);
+
   let currentStreak = 0;
   let bestStreak = 0;
   let worstStreak = 0;
@@ -28,16 +69,11 @@ export async function getAccountStats(accountId: string) {
   let tempLossStreak = 0;
 
   for (const trade of trades) {
-    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-    totalPnl += tradePnl;
-
-    if (tradePnl > 0) {
-      wins++;
+    if (trade.pnl > 0) {
       tempWinStreak++;
       tempLossStreak = 0;
       if (tempWinStreak > bestStreak) bestStreak = tempWinStreak;
-    } else if (tradePnl < 0) {
-      losses++;
+    } else if (trade.pnl < 0) {
       tempLossStreak++;
       tempWinStreak = 0;
       if (tempLossStreak > worstStreak) worstStreak = tempLossStreak;
@@ -45,14 +81,10 @@ export async function getAccountStats(accountId: string) {
       tempWinStreak = 0;
       tempLossStreak = 0;
     }
-
-    if (tradePnl > bestTrade) bestTrade = tradePnl;
-    if (tradePnl < worstTrade) worstTrade = tradePnl;
   }
 
-  // Current streak
   for (let i = trades.length - 1; i >= 0; i--) {
-    const pnl = trades[i].positions.reduce((sum, p) => sum + p.pnl, 0);
+    const pnl = trades[i].pnl;
     if (i === trades.length - 1) {
       currentStreak = pnl >= 0 ? 1 : -1;
     } else {
@@ -61,8 +93,6 @@ export async function getAccountStats(accountId: string) {
       else break;
     }
   }
-
-  const total = wins + losses;
 
   return {
     totalTrades: total,
@@ -83,43 +113,37 @@ export async function getAccountStats(accountId: string) {
 }
 
 export async function getEquityData(accountId: string) {
-  const user = await getUser();
-  const account = await prisma.account.findFirst({
-    where: { id: accountId, userId: user.id },
-  });
-  if (!account) throw new Error("Cuenta no encontrada");
+  const account = await verifyAccountOwnership(accountId);
 
-  // Get closed trades (not positions) with their total P&L
-  const trades = await prisma.trade.findMany({
-    where: { accountId, status: "CLOSED", closedAt: { not: null } },
-    include: { positions: true },
-    orderBy: { closedAt: "asc" },
-  });
-
-  // Aggregate P&L by day
-  const dailyPnl: Record<string, { pnl: number; trades: number }> = {};
-  for (const trade of trades) {
-    const day = trade.closedAt!.toISOString().split("T")[0];
-    if (!dailyPnl[day]) dailyPnl[day] = { pnl: 0, trades: 0 };
-    dailyPnl[day].pnl += trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-    dailyPnl[day].trades++;
-  }
-
-  // Sort days and build running capital
-  const sortedDays = Object.keys(dailyPnl).sort();
+  const rows = await prisma.$queryRaw<
+    { day: string; pnl: number; trades: bigint }[]
+  >`
+    SELECT
+      TO_CHAR(t.closed_at, 'YYYY-MM-DD') AS day,
+      COALESCE(SUM(p.pnl), 0)::float AS pnl,
+      COUNT(DISTINCT t.id)::bigint AS trades
+    FROM trades t
+    LEFT JOIN positions p ON p.trade_id = t.id
+    WHERE t.account_id = ${accountId}
+      AND t.status = 'CLOSED'
+      AND t.closed_at IS NOT NULL
+    GROUP BY TO_CHAR(t.closed_at, 'YYYY-MM-DD')
+    ORDER BY day ASC
+  `;
 
   let runningCapital = account.initialCapital;
+  const startDate = rows[0]?.day ?? account.createdAt.toISOString().split("T")[0];
   const dataPoints: { date: string; capital: number; pnl: number; trades: number }[] = [
-    { date: sortedDays[0] ?? account.createdAt.toISOString().split("T")[0], capital: runningCapital, pnl: 0, trades: 0 },
+    { date: startDate, capital: runningCapital, pnl: 0, trades: 0 },
   ];
 
-  for (const day of sortedDays) {
-    runningCapital += dailyPnl[day].pnl;
+  for (const row of rows) {
+    runningCapital += row.pnl;
     dataPoints.push({
-      date: day,
+      date: row.day,
       capital: Math.round(runningCapital * 100) / 100,
-      pnl: Math.round(dailyPnl[day].pnl * 100) / 100,
-      trades: dailyPnl[day].trades,
+      pnl: Math.round(row.pnl * 100) / 100,
+      trades: Number(row.trades),
     });
   }
 
@@ -127,154 +151,153 @@ export async function getEquityData(accountId: string) {
 }
 
 export async function getCalendarData(accountId: string, year: number, month: number) {
-  const user = await getUser();
-  const account = await prisma.account.findFirst({
-    where: { id: accountId, userId: user.id },
-  });
-  if (!account) throw new Error("Cuenta no encontrada");
+  await verifyAccountOwnership(accountId);
 
   const startDate = new Date(year, month, 1);
   const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
-  const trades = await prisma.trade.findMany({
-    where: {
-      accountId,
-      openedAt: { gte: startDate, lte: endDate },
-    },
-    include: { positions: true },
-    orderBy: { openedAt: "asc" },
-  });
+  const rows = await prisma.$queryRaw<
+    { day: string; trades: bigint; pnl: number }[]
+  >`
+    SELECT
+      TO_CHAR(t.opened_at, 'YYYY-MM-DD') AS day,
+      COUNT(DISTINCT t.id)::bigint AS trades,
+      COALESCE(SUM(p.pnl), 0)::float AS pnl
+    FROM trades t
+    LEFT JOIN positions p ON p.trade_id = t.id
+    WHERE t.account_id = ${accountId}
+      AND t.opened_at >= ${startDate}
+      AND t.opened_at <= ${endDate}
+    GROUP BY TO_CHAR(t.opened_at, 'YYYY-MM-DD')
+    ORDER BY day ASC
+  `;
 
   const dayMap: Record<string, { trades: number; pnl: number }> = {};
-
-  for (const trade of trades) {
-    const dayKey = trade.openedAt.toISOString().split("T")[0];
-    if (!dayMap[dayKey]) dayMap[dayKey] = { trades: 0, pnl: 0 };
-    dayMap[dayKey].trades++;
-    dayMap[dayKey].pnl += trade.positions.reduce((sum, p) => sum + p.pnl, 0);
+  for (const row of rows) {
+    dayMap[row.day] = { trades: Number(row.trades), pnl: row.pnl };
   }
-
   return dayMap;
 }
 
 export async function getDailyStats(accountId: string) {
-  const user = await getUser();
-  const account = await prisma.account.findFirst({
-    where: { id: accountId, userId: user.id },
-  });
-  if (!account) throw new Error("Cuenta no encontrada");
+  await verifyAccountOwnership(accountId);
 
-  const trades = await prisma.trade.findMany({
-    where: { accountId, status: "CLOSED", closedAt: { not: null } },
-    include: { positions: true },
-    orderBy: { closedAt: "asc" },
-  });
+  const rows = await prisma.$queryRaw<
+    { day: string; trades: bigint; wins: bigint; losses: bigint; pnl: number; best: number; worst: number }[]
+  >`
+    SELECT
+      sub.day,
+      COUNT(*)::bigint AS trades,
+      COUNT(*) FILTER (WHERE sub.trade_pnl > 0)::bigint AS wins,
+      COUNT(*) FILTER (WHERE sub.trade_pnl < 0)::bigint AS losses,
+      SUM(sub.trade_pnl)::float AS pnl,
+      MAX(sub.trade_pnl)::float AS best,
+      MIN(sub.trade_pnl)::float AS worst
+    FROM (
+      SELECT
+        TO_CHAR(t.closed_at, 'YYYY-MM-DD') AS day,
+        COALESCE(SUM(p.pnl), 0) AS trade_pnl
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId} AND t.status = 'CLOSED' AND t.closed_at IS NOT NULL
+      GROUP BY t.id, TO_CHAR(t.closed_at, 'YYYY-MM-DD')
+    ) sub
+    GROUP BY sub.day
+    ORDER BY sub.day ASC
+  `;
 
-  const daily: Record<string, {
-    trades: number;
-    wins: number;
-    losses: number;
-    pnl: number;
-    best: number;
-    worst: number;
-  }> = {};
-
-  for (const trade of trades) {
-    const key = trade.closedAt!.toISOString().split("T")[0];
-    if (!daily[key]) daily[key] = { trades: 0, wins: 0, losses: 0, pnl: 0, best: 0, worst: 0 };
-
-    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-    daily[key].trades++;
-    daily[key].pnl += tradePnl;
-    if (tradePnl > 0) daily[key].wins++;
-    else if (tradePnl < 0) daily[key].losses++;
-    if (tradePnl > daily[key].best) daily[key].best = tradePnl;
-    if (tradePnl < daily[key].worst) daily[key].worst = tradePnl;
+  const daily: Record<string, { trades: number; wins: number; losses: number; pnl: number; best: number; worst: number }> = {};
+  for (const row of rows) {
+    daily[row.day] = {
+      trades: Number(row.trades),
+      wins: Number(row.wins),
+      losses: Number(row.losses),
+      pnl: row.pnl,
+      best: row.best,
+      worst: row.worst,
+    };
   }
-
   return daily;
 }
 
 export async function getWeeklyMonthlyStats(accountId: string) {
-  const user = await getUser();
-  const account = await prisma.account.findFirst({
-    where: { id: accountId, userId: user.id },
-  });
-  if (!account) throw new Error("Cuenta no encontrada");
+  await verifyAccountOwnership(accountId);
 
-  const trades = await prisma.trade.findMany({
-    where: { accountId, status: "CLOSED" },
-    include: { positions: true },
-    orderBy: { closedAt: "asc" },
-  });
+  const rows = await prisma.$queryRaw<
+    { month: string; trades: bigint; wins: bigint; losses: bigint; pnl: number; best: number; worst: number }[]
+  >`
+    SELECT
+      sub.month,
+      COUNT(*)::bigint AS trades,
+      COUNT(*) FILTER (WHERE sub.trade_pnl > 0)::bigint AS wins,
+      COUNT(*) FILTER (WHERE sub.trade_pnl < 0)::bigint AS losses,
+      SUM(sub.trade_pnl)::float AS pnl,
+      MAX(sub.trade_pnl)::float AS best,
+      MIN(sub.trade_pnl)::float AS worst
+    FROM (
+      SELECT
+        TO_CHAR(t.closed_at, 'YYYY-MM') AS month,
+        COALESCE(SUM(p.pnl), 0) AS trade_pnl
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId} AND t.status = 'CLOSED' AND t.closed_at IS NOT NULL
+      GROUP BY t.id, TO_CHAR(t.closed_at, 'YYYY-MM')
+    ) sub
+    GROUP BY sub.month
+    ORDER BY sub.month ASC
+  `;
 
-  const monthly: Record<string, {
-    trades: number;
-    wins: number;
-    losses: number;
-    pnl: number;
-    best: number;
-    worst: number;
-  }> = {};
-
-  for (const trade of trades) {
-    if (!trade.closedAt) continue;
-    const key = `${trade.closedAt.getFullYear()}-${String(trade.closedAt.getMonth() + 1).padStart(2, "0")}`;
-    if (!monthly[key]) monthly[key] = { trades: 0, wins: 0, losses: 0, pnl: 0, best: 0, worst: 0 };
-
-    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-    monthly[key].trades++;
-    monthly[key].pnl += tradePnl;
-    if (tradePnl > 0) monthly[key].wins++;
-    else if (tradePnl < 0) monthly[key].losses++;
-    if (tradePnl > monthly[key].best) monthly[key].best = tradePnl;
-    if (tradePnl < monthly[key].worst) monthly[key].worst = tradePnl;
+  const monthly: Record<string, { trades: number; wins: number; losses: number; pnl: number; best: number; worst: number }> = {};
+  for (const row of rows) {
+    monthly[row.month] = {
+      trades: Number(row.trades),
+      wins: Number(row.wins),
+      losses: Number(row.losses),
+      pnl: row.pnl,
+      best: row.best,
+      worst: row.worst,
+    };
   }
-
   return monthly;
 }
 
 export async function getWeeklyStats(accountId: string) {
-  const user = await getUser();
-  const account = await prisma.account.findFirst({
-    where: { id: accountId, userId: user.id },
-  });
-  if (!account) throw new Error("Cuenta no encontrada");
+  await verifyAccountOwnership(accountId);
 
-  const trades = await prisma.trade.findMany({
-    where: { accountId, status: "CLOSED" },
-    include: { positions: true },
-    orderBy: { closedAt: "asc" },
-  });
+  const rows = await prisma.$queryRaw<
+    { week: string; trades: bigint; wins: bigint; losses: bigint; pnl: number; best: number; worst: number }[]
+  >`
+    SELECT
+      sub.week,
+      COUNT(*)::bigint AS trades,
+      COUNT(*) FILTER (WHERE sub.trade_pnl > 0)::bigint AS wins,
+      COUNT(*) FILTER (WHERE sub.trade_pnl < 0)::bigint AS losses,
+      SUM(sub.trade_pnl)::float AS pnl,
+      MAX(sub.trade_pnl)::float AS best,
+      MIN(sub.trade_pnl)::float AS worst
+    FROM (
+      SELECT
+        TO_CHAR(DATE_TRUNC('week', t.closed_at), 'YYYY-MM-DD') AS week,
+        COALESCE(SUM(p.pnl), 0) AS trade_pnl
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId} AND t.status = 'CLOSED' AND t.closed_at IS NOT NULL
+      GROUP BY t.id, TO_CHAR(DATE_TRUNC('week', t.closed_at), 'YYYY-MM-DD')
+    ) sub
+    GROUP BY sub.week
+    ORDER BY sub.week ASC
+  `;
 
-  const weekly: Record<string, {
-    trades: number;
-    wins: number;
-    losses: number;
-    pnl: number;
-    best: number;
-    worst: number;
-  }> = {};
-
-  for (const trade of trades) {
-    if (!trade.closedAt) continue;
-    // Get Monday of the week
-    const d = new Date(trade.closedAt);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    const key = monday.toISOString().split("T")[0];
-
-    if (!weekly[key]) weekly[key] = { trades: 0, wins: 0, losses: 0, pnl: 0, best: 0, worst: 0 };
-
-    const tradePnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-    weekly[key].trades++;
-    weekly[key].pnl += tradePnl;
-    if (tradePnl > 0) weekly[key].wins++;
-    else if (tradePnl < 0) weekly[key].losses++;
-    if (tradePnl > weekly[key].best) weekly[key].best = tradePnl;
-    if (tradePnl < weekly[key].worst) weekly[key].worst = tradePnl;
+  const weekly: Record<string, { trades: number; wins: number; losses: number; pnl: number; best: number; worst: number }> = {};
+  for (const row of rows) {
+    weekly[row.week] = {
+      trades: Number(row.trades),
+      wins: Number(row.wins),
+      losses: Number(row.losses),
+      pnl: row.pnl,
+      best: row.best,
+      worst: row.worst,
+    };
   }
-
   return weekly;
 }
