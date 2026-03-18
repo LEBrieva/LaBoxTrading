@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { closePosition } from "@/lib/actions/trades";
+import { useStats } from "@/contexts/stats-context";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -29,6 +30,7 @@ export function ClosePositionDialog({
   const [closedAt, setClosedAt] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { refreshStats } = useStats();
 
   // Pre-fill exit price with live price when dialog opens
   useEffect(() => {
@@ -62,6 +64,7 @@ export function ClosePositionDialog({
       );
       setOpen(false);
       setExitPrice("");
+      refreshStats();
       router.refresh();
     } catch (err) {
       console.error("Error closing position:", err);

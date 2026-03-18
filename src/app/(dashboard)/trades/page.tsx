@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { getTradesPaginated } from "@/lib/actions/trades";
-import { getAccountStats } from "@/lib/actions/stats";
 import { getSymbols, getUsedPairs } from "@/lib/actions/symbols";
 import { getStrategies } from "@/lib/actions/strategies";
 import { TradesList } from "@/components/trades/trades-list";
@@ -32,12 +31,11 @@ export default async function TradesPage({
 
   const account = accounts.find((a) => a.id === activeAccountId);
   const params = await searchParams;
-  const [{ trades, hasMore, stats: tradeStats }, accountStats, symbols, usedPairs, strategies] = await Promise.all([
+  const [{ trades, hasMore, stats: tradeStats }, symbols, usedPairs, strategies] = await Promise.all([
     getTradesPaginated(activeAccountId, {
       from: params.from || undefined,
       to: params.to || undefined,
     }),
-    getAccountStats(activeAccountId),
     getSymbols(account?.broker || "SIMPLEFX"),
     getUsedPairs(activeAccountId),
     getStrategies(),
@@ -49,7 +47,7 @@ export default async function TradesPage({
         <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase">
           Trades
         </h1>
-        <TradeForm accountId={activeAccountId} currentCapital={accountStats.currentCapital} symbols={symbols} />
+        <TradeForm accountId={activeAccountId} symbols={symbols} />
       </div>
       <TradesList
         accountId={activeAccountId}

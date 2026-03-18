@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPnl, formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
 import { usePrices } from "@/contexts/price-context";
+import { useStats } from "@/contexts/stats-context";
 import { updateTrade, deleteTrade } from "@/lib/actions/trades";
 import { addTradeImage, deleteTradeImage } from "@/lib/actions/trade-images";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
@@ -82,6 +83,7 @@ export function TradeDrawer({
   const router = useRouter();
   const [isRefreshing, startTransition] = useTransition();
   const { prices, decimalsMap } = usePrices();
+  const { refreshStats } = useStats();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN");
   const isLong = trade.direction === "LONG";
@@ -607,6 +609,7 @@ export function TradeDrawer({
                             try {
                               await deleteTrade(trade.id);
                               onClose();
+                              refreshStats();
                               startTransition(() => router.refresh());
                             } catch (err) {
                               console.error(err);

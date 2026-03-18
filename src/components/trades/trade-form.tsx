@@ -7,6 +7,7 @@ import { addTradeImage } from "@/lib/actions/trade-images";
 import { calcRiskUsd, calcRiskPct, calcTpPrice, calcEstimatedGain } from "@/lib/calculations";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
+import { useStats } from "@/contexts/stats-context";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -21,11 +22,11 @@ interface SymbolItem {
 
 interface TradeFormProps {
   accountId: string;
-  currentCapital: number;
   symbols?: SymbolItem[];
 }
 
-export function TradeForm({ accountId, currentCapital, symbols = [] }: TradeFormProps) {
+export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
+  const { stats: { currentCapital } } = useStats();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pair, setPair] = useState("");
