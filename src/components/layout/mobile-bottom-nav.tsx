@@ -8,6 +8,7 @@ const navItems = [
   { title: "Trades", href: "/trades", icon: "\u25B2" },
   { title: "Calendario", href: "/calendar", icon: "\u25A6" },
   { title: "Cuentas", href: "/accounts", icon: "\u25CE" },
+  { title: "Estrategias", href: "/strategies", icon: "\u25C7" },
   { title: "Config", href: "/settings", icon: "\u2699" },
 ];
 

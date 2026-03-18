@@ -3,6 +3,7 @@ import { getAccounts } from "@/lib/actions/accounts";
 import { getTradesPaginated } from "@/lib/actions/trades";
 import { getAccountStats } from "@/lib/actions/stats";
 import { getSymbols, getUsedPairs } from "@/lib/actions/symbols";
+import { getStrategies } from "@/lib/actions/strategies";
 import { TradesList } from "@/components/trades/trades-list";
 import { TradeForm } from "@/components/trades/trade-form";
 
@@ -31,7 +32,7 @@ export default async function TradesPage({
 
   const account = accounts.find((a) => a.id === activeAccountId);
   const params = await searchParams;
-  const [{ trades, hasMore, stats: tradeStats }, accountStats, symbols, usedPairs] = await Promise.all([
+  const [{ trades, hasMore, stats: tradeStats }, accountStats, symbols, usedPairs, strategies] = await Promise.all([
     getTradesPaginated(activeAccountId, {
       from: params.from || undefined,
       to: params.to || undefined,
@@ -39,6 +40,7 @@ export default async function TradesPage({
     getAccountStats(activeAccountId),
     getSymbols(account?.broker || "SIMPLEFX"),
     getUsedPairs(activeAccountId),
+    getStrategies(),
   ]);
 
   return (
@@ -58,6 +60,7 @@ export default async function TradesPage({
         initialDateFrom={params.from || ""}
         initialDateTo={params.to || ""}
         pairs={usedPairs}
+        strategies={strategies}
       />
     </div>
   );

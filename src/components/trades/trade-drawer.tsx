@@ -9,6 +9,7 @@ import { addTradeImage, deleteTradeImage } from "@/lib/actions/trade-images";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
 import { ClosePositionDialog } from "./close-position-dialog";
+import { TradeChecklist } from "./trade-checklist";
 
 interface Position {
   id: string;
@@ -45,9 +46,15 @@ interface Trade {
   status: string;
   positions: Position[];
   images: TradeImage[];
+  checklist?: {
+    id: string;
+    strategyId: string | null;
+    strategy: { id: string; name: string; fields: unknown } | null;
+    values: unknown;
+  } | null;
 }
 
-type Tab = "info" | "screenshots";
+type Tab = "info" | "screenshots" | "strategy";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -63,10 +70,12 @@ export function TradeDrawer({
   trade,
   open,
   onClose,
+  strategies = [],
 }: {
   trade: Trade;
   open: boolean;
   onClose: () => void;
+  strategies?: { id: string; name: string; fields: unknown }[];
 }) {
   const router = useRouter();
   const { prices, decimalsMap } = usePrices();
@@ -194,12 +203,16 @@ export function TradeDrawer({
     }
   }
 
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+
   async function handleDeleteImage(imageId: string) {
+    setDeletingImageId(imageId);
     try {
       await deleteTradeImage(imageId);
       router.refresh();
     } catch (err) {
       console.error(err);
+      setDeletingImageId(null);
     }
   }
 
@@ -216,11 +229,11 @@ export function TradeDrawer({
   const imageCount = trade.images.length;
 
   return (
-    <div className="fixed inset-0 z-[1000]" onClick={onClose}>
+    <div className="fixed inset-0 z-[1000] h-[100dvh]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div
-        className="absolute top-0 right-0 h-full w-full md:max-w-[440px] bg-[#08090c] border-l border-[#252833] flex flex-col animate-in slide-in-from-right duration-200"
+        className="absolute top-0 right-0 bottom-0 w-full md:max-w-[440px] bg-[#08090c] border-l border-[#252833] flex flex-col animate-in slide-in-from-right duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -291,12 +304,28 @@ export function TradeDrawer({
               )}
               {tab === "screenshots" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5eead4]" />}
             </button>
+            <button
+              onClick={() => { setTab("strategy"); setEditing(false); }}
+              className={`px-4 py-2 text-[11px] uppercase tracking-[2px] font-semibold transition-colors relative cursor-pointer ${
+                tab === "strategy" ? "text-[#5eead4]" : "text-[#71717a] hover:text-[#d4d4d8]"
+              }`}
+            >
+              Estrategia
+              {trade.checklist && <span className="ml-1.5 font-mono text-[10px] opacity-60">✓</span>}
+              {tab === "strategy" && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#5eead4]" />}
+            </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-          {tab === "info" ? (
+          {tab === "strategy" ? (
+            <TradeChecklist
+              tradeId={trade.id}
+              checklist={trade.checklist || null}
+              strategies={strategies}
+            />
+          ) : tab === "info" ? (
             <>
               {/* P&L */}
               {isOpen && unrealizedPnl != null ? (
@@ -593,9 +622,14 @@ export function TradeDrawer({
                         </div>
                         <button
                           onClick={() => handleDeleteImage(img.id)}
-                          className="text-[#52525b] hover:text-[#f87171] text-[10px] font-mono transition-colors shrink-0 cursor-pointer"
+                          disabled={deletingImageId === img.id}
+                          className={`text-[10px] font-mono transition-colors shrink-0 cursor-pointer ${
+                            deletingImageId === img.id
+                              ? "text-[#f87171]/50 cursor-wait"
+                              : "text-[#52525b] hover:text-[#f87171]"
+                          }`}
                         >
-                          Eliminar
+                          {deletingImageId === img.id ? "Eliminando..." : "Eliminar"}
                         </button>
                       </div>
                     </div>

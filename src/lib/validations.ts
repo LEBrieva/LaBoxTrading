@@ -68,3 +68,32 @@ export const addTradeImageSchema = z.object({
   url: z.url(),
   caption: z.string().max(500).optional(),
 });
+
+// ── Strategies ───────────────────────────────────────────────────
+const strategyFieldSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(200),
+  type: z.enum(["checkbox", "range", "text", "select"]),
+  order: z.number().int().min(0),
+  options: z.array(z.string().max(100)).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+});
+
+export const createStrategySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(2000).optional(),
+  fields: z.array(strategyFieldSchema).min(1, "Debe tener al menos un campo"),
+});
+
+export const updateStrategySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  fields: z.array(strategyFieldSchema).min(1).optional(),
+});
+
+export const saveChecklistSchema = z.object({
+  tradeId: cuid,
+  strategyId: cuid,
+  values: z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])),
+});

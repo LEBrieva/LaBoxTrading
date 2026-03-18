@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { getOpenTradePairs, getSymbolDecimalsMap } from "@/lib/actions/symbols";
+import { getAccountStats } from "@/lib/actions/stats";
 import { AccountSwitcherWrapper } from "@/components/layout/account-switcher-wrapper";
 import { NavLinks } from "@/components/layout/nav-links";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
@@ -15,9 +16,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const account = accounts.find(a => a.id === activeAccountId) || accounts[0];
   const broker = account?.broker || "SIMPLEFX";
 
-  const [openPairs, decimalsMap] = await Promise.all([
+  const [openPairs, decimalsMap, accountStats] = await Promise.all([
     getOpenTradePairs(),
     getSymbolDecimalsMap(broker),
+    account ? getAccountStats(account.id) : null,
   ]);
 
   return (
@@ -38,19 +40,30 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <ConnectionStatus />
             </div>
             <div className="flex items-center gap-4 md:gap-6">
-              {account && (
-                <div className="text-right">
-                  <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">Capital</div>
-                  <div
-                    className="font-mono text-base md:text-xl font-bold text-[#4ade80]"
-                    style={{ textShadow: "0 0 20px rgba(74,222,128,0.15)" }}
-                  >
-                    {formatCurrency(account.currentCapital, account.currency)}
+              {account && accountStats && (
+                <>
+                  <div className="text-right">
+                    <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">P&L</div>
+                    <div
+                      className={`font-mono text-base md:text-xl font-bold ${accountStats.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}
+                    >
+                      {accountStats.totalPnl >= 0 ? "+" : ""}{formatCurrency(accountStats.totalPnl, account.currency)}
+                    </div>
                   </div>
-                  <div className="font-mono text-[10px] text-[#52525b]">
-                    inicio: {formatCurrency(account.initialCapital)}
+                  <div className="hidden md:block w-px h-8 bg-[#252833]" />
+                  <div className="text-right">
+                    <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">Capital</div>
+                    <div
+                      className="font-mono text-base md:text-xl font-bold text-[#4ade80]"
+                      style={{ textShadow: "0 0 20px rgba(74,222,128,0.15)" }}
+                    >
+                      {formatCurrency(account.currentCapital, account.currency)}
+                    </div>
+                    <div className="font-mono text-[10px] text-[#52525b]">
+                      inicio: {formatCurrency(account.initialCapital)}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
               <AccountSwitcherWrapper accounts={accounts} activeAccountId={activeAccountId} />
             </div>

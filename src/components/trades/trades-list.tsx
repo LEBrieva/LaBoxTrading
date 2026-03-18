@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useEffect, useRef, useCallback, useTransition, useMemo } from "react";
 import { TradeCard } from "./trade-card";
+import { TradesSummary } from "./trades-summary";
 import { getTradesPaginated, getTradesForExport } from "@/lib/actions/trades";
 import * as XLSX from "xlsx";
 
@@ -40,6 +41,12 @@ interface Trade {
   status: string;
   positions: Position[];
   images: TradeImage[];
+  checklist?: {
+    id: string;
+    strategyId: string | null;
+    strategy: { id: string; name: string; fields: unknown } | null;
+    values: unknown;
+  } | null;
 }
 
 interface Stats {
@@ -69,6 +76,7 @@ export function TradesList({
   initialDateFrom = "",
   initialDateTo = "",
   pairs = [],
+  strategies = [],
 }: {
   accountId: string;
   accountName: string;
@@ -78,6 +86,7 @@ export function TradesList({
   initialDateFrom?: string;
   initialDateTo?: string;
   pairs?: string[];
+  strategies?: { id: string; name: string; fields: unknown }[];
 }) {
   const [trades, setTrades] = useState<Trade[]>(initialTrades);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -211,10 +220,10 @@ export function TradesList({
     return () => observer.disconnect();
   }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, dateFrom, dateTo, fetchTrades]);
 
-  const sign = stats.totalPnl >= 0 ? "+" : "";
-  const wr = (stats.wins + stats.losses) > 0
-    ? ((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1)
-    : "—";
+  const openTrades = useMemo(
+    () => trades.filter((t) => t.status === "OPEN"),
+    [trades]
+  );
 
   return (
     <div>
@@ -355,30 +364,8 @@ export function TradesList({
         </button>
       </div>
 
-      {/* Summary */}
-      {stats.total > 0 && (
-        <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-5 px-4 py-3 bg-[#0e1015] border border-[#252833] rounded-lg font-mono text-[11px]">
-          <span className="text-[#d4d4d8]">
-            {stats.total} {stats.total === 1 ? "trade" : "trades"}
-          </span>
-          <span className="text-[#252833]">|</span>
-          <span className="text-[#4ade80]">{stats.wins}W</span>
-          <span className="text-[#f87171]">{stats.losses}L</span>
-          {stats.openCount > 0 && (
-            <span className="text-[#5eead4]">{stats.openCount} abiertos</span>
-          )}
-          <span className="text-[#252833]">|</span>
-          <span className={stats.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}>
-            P&L: {sign}${Math.abs(stats.totalPnl).toFixed(2)}
-          </span>
-          {(stats.wins + stats.losses) > 0 && (
-            <>
-              <span className="text-[#252833]">|</span>
-              <span className="text-[#5eead4]">WR: {wr}%</span>
-            </>
-          )}
-        </div>
-      )}
+      {/* Summary — live P&L updates via usePrices() */}
+      <TradesSummary stats={stats} openTrades={openTrades} statusFilter={statusFilter} />
 
       {/* Results */}
       {trades.length === 0 && !isPending ? (
@@ -389,7 +376,7 @@ export function TradesList({
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {trades.map((trade) => (
             <TradeCard
               key={trade.id}
@@ -410,6 +397,8 @@ export function TradesList({
               status={trade.status}
               positions={trade.positions}
               images={trade.images}
+              checklist={trade.checklist}
+              strategies={strategies}
             />
           ))}
 

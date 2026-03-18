@@ -9,6 +9,7 @@ const navItems = [
   { title: "Trades", href: "/trades" },
   { title: "Calendario", href: "/calendar" },
   { title: "Cuentas", href: "/accounts" },
+  { title: "Estrategias", href: "/strategies" },
   { title: "Config", href: "/settings" },
 ];
 

@@ -12,8 +12,9 @@ model User {
   email     String    @unique
   name      String?
   authId    String    @unique @map("auth_id")
-  createdAt DateTime  @default(now()) @map("created_at")
-  accounts  Account[]
+  createdAt  DateTime   @default(now()) @map("created_at")
+  accounts   Account[]
+  strategies Strategy[]
 
   @@map("users")
 }
@@ -56,6 +57,7 @@ model Trade {
   status     TradeStatus @default(OPEN)
   positions  Position[]
   images     TradeImage[]
+  checklist  TradeChecklist?
 
   @@index([accountId, status])
   @@index([accountId, openedAt])
@@ -111,6 +113,35 @@ enum PositionStatus {
   SL
   BE
   PARTIAL
+}
+
+model Strategy {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  fields      Json
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  checklists  TradeChecklist[]
+
+  @@index([userId])
+  @@map("strategies")
+}
+
+model TradeChecklist {
+  id         String    @id @default(cuid())
+  tradeId    String    @unique @map("trade_id")
+  trade      Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  strategyId String?   @map("strategy_id")
+  strategy   Strategy? @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  values     Json
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([strategyId])
+  @@map("trade_checklists")
 }
 
 model Symbol {

@@ -41,6 +41,13 @@ interface TradeCardProps {
   status: string;
   positions: Position[];
   images: TradeImage[];
+  checklist?: {
+    id: string;
+    strategyId: string | null;
+    strategy: { id: string; name: string; fields: unknown } | null;
+    values: unknown;
+  } | null;
+  strategies?: { id: string; name: string; fields: unknown }[];
 }
 
 function statusColor(status: string): string {
@@ -93,6 +100,8 @@ export function TradeCard({
   status,
   positions,
   images,
+  checklist,
+  strategies,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { prices, decimalsMap, subscribePair } = usePrices();
@@ -187,6 +196,13 @@ export function TradeCard({
                 ▣ {images.length}
               </span>
             )}
+            {checklist?.strategy && (
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 text-[10px] text-[#a78bfa] font-mono rounded border border-[#a78bfa]/25 bg-[#a78bfa]/10"
+              >
+                ◇ {checklist.strategy.name}
+              </span>
+            )}
             <span className="text-[#52525b] text-[10px] font-mono">
               {timeAgo(openedAt)}
             </span>
@@ -194,23 +210,7 @@ export function TradeCard({
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3 px-4 md:px-5 py-3">
-          <div>
-            <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
-              Riesgo
-            </span>
-            <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
-              {formatCurrency(riskUsd)}
-            </span>
-          </div>
-          <div>
-            <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
-              Riesgo%
-            </span>
-            <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
-              {riskPct.toFixed(2)}%
-            </span>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 px-4 md:px-5 py-3">
           <div>
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Entrada
@@ -335,9 +335,11 @@ export function TradeCard({
           status,
           positions,
           images,
+          checklist,
         }}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        strategies={strategies}
       />
     </>
   );
