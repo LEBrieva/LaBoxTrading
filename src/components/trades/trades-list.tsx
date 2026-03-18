@@ -121,6 +121,7 @@ export function TradesList({
   const isLoadingMore = useRef(false);
 
   const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || dateFrom || dateTo;
+  const prevFiltersRef = useRef({ statusFilter, resultFilter, pairFilter, dateFrom, dateTo });
 
   const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, from: string, to: string) => {
     const result = await getTradesPaginated(accountId, {
@@ -187,8 +188,20 @@ export function TradesList({
     }
   }
 
-  // Reset when filters change
+  // Reset when filters change — compare with previous values to skip redundant fetches
   useEffect(() => {
+    const prev = prevFiltersRef.current;
+    const changed =
+      prev.statusFilter !== statusFilter ||
+      prev.resultFilter !== resultFilter ||
+      prev.pairFilter !== pairFilter ||
+      prev.dateFrom !== dateFrom ||
+      prev.dateTo !== dateTo;
+
+    prevFiltersRef.current = { statusFilter, resultFilter, pairFilter, dateFrom, dateTo };
+
+    if (!changed) return;
+
     startTransition(async () => {
       const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
       setTrades(result.trades);

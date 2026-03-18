@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { getAccountStats } from "@/lib/actions/stats";
 
 export interface AccountStats {
@@ -67,6 +67,7 @@ export function StatsProvider({
     ...fallback,
   });
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   const refreshStats = useCallback(async () => {
     if (!accountId) return;
@@ -80,7 +81,10 @@ export function StatsProvider({
     }
   }, [accountId]);
 
+  // Fetch on mount — guard against StrictMode double-mount
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     refreshStats();
   }, [refreshStats]);
 
