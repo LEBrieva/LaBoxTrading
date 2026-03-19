@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { formatPnl, formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
-import { usePrices } from "@/contexts/price-context";
+import { formatPnl, formatCurrency } from "@/lib/calculations";
 import { useStats } from "@/contexts/stats-context";
+import { DrawerLivePnl } from "./drawer-live-pnl";
 import { updateTrade, deleteTrade } from "@/lib/actions/trades";
-import { addTradeImage, deleteTradeImage } from "@/lib/actions/trade-images";
+import { addTradeImage, deleteTradeImage, getTradeImages } from "@/lib/actions/trade-images";
+import { getTradeChecklist } from "@/lib/actions/trade-checklist";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
-import { ClosePositionDialog } from "./close-position-dialog";
+import { LiveCloseButton } from "./live-close-button";
 import { TradeChecklist } from "./trade-checklist";
 
 interface Position {
@@ -47,12 +48,11 @@ interface Trade {
   closedAt: Date | null;
   status: string;
   positions: Position[];
-  images: TradeImage[];
+  _count: { images: number };
   checklist?: {
     id: string;
     strategyId: string | null;
-    strategy: { id: string; name: string; fields: unknown } | null;
-    values: unknown;
+    strategy: { id: string; name: string } | null;
   } | null;
 }
 
@@ -96,7 +96,6 @@ export function TradeDrawer({
     tradeUpdates?: Partial<Trade>
   ) => void;
 }) {
-  const { prices, decimalsMap } = usePrices();
   const { refreshStats } = useStats();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN");
@@ -104,12 +103,7 @@ export function TradeDrawer({
   const firstClosed = trade.positions[0]?.status;
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
   const isOpen = trade.status === "OPEN";
-  const priceData = prices[trade.pair];
-  const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
-  const unrealizedPnl = trade.entry != null && trade.size != null && livePrice != null
-    ? calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction)
-    : null;
-  const dec = decimalsMap[trade.pair] ?? 2;
+  const dec = 2;
 
   const [tab, setTab] = useState<Tab>("info");
   const [editing, setEditing] = useState(false);
@@ -121,6 +115,17 @@ export function TradeDrawer({
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Lazy-loaded data
+  const [images, setImages] = useState<TradeImage[]>([]);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [fullChecklist, setFullChecklist] = useState<{
+    id: string;
+    strategyId: string | null;
+    strategy: { id: string; name: string; fields: unknown } | null;
+    values: unknown;
+  } | null>(null);
+  const [checklistLoaded, setChecklistLoaded] = useState(false);
 
   // Screenshot tab state
   const [uploading, setUploading] = useState(false);
@@ -140,14 +145,33 @@ export function TradeDrawer({
     }
   }, [trade, editing]);
 
-  // Reset tab when drawer opens
+  // Reset tab and lazy-load data when drawer opens
   useEffect(() => {
     if (open) {
       setTab("info");
       setEditing(false);
       setConfirmDelete(false);
+      setImagesLoaded(false);
+      setChecklistLoaded(false);
+      setImages([]);
+      setFullChecklist(null);
+
+      // Load images and checklist in background
+      getTradeImages(trade.id).then((imgs) => {
+        setImages(imgs);
+        setImagesLoaded(true);
+      }).catch(console.error);
+
+      if (trade.checklist?.strategyId) {
+        getTradeChecklist(trade.id).then((cl) => {
+          setFullChecklist(cl);
+          setChecklistLoaded(true);
+        }).catch(console.error);
+      } else {
+        setChecklistLoaded(true);
+      }
     }
-  }, [open]);
+  }, [open, trade.id, trade.checklist?.strategyId]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -231,14 +255,9 @@ export function TradeDrawer({
       const url = await uploadTradeScreenshot(user.id, newFile);
       const newImage = await addTradeImage(trade.id, url, newCaption || undefined);
       resetUploadForm();
-      onTradeUpdated?.(trade.id, {
-        images: [...trade.images, {
-          id: newImage.id,
-          url: newImage.url,
-          caption: newImage.caption,
-          createdAt: newImage.createdAt,
-        }],
-      });
+      const img = { id: newImage.id, url: newImage.url, caption: newImage.caption, createdAt: newImage.createdAt };
+      setImages((prev) => [...prev, img]);
+      onTradeUpdated?.(trade.id, { _count: { images: images.length + 1 } });
     } catch (err) {
       console.error(err);
     } finally {
@@ -247,17 +266,18 @@ export function TradeDrawer({
   }
 
   async function handleDeleteImage(imageId: string) {
+    const prevImages = images;
     setDeletingImageId(imageId);
     // Optimistic: update UI immediately
-    onTradeUpdated?.(trade.id, {
-      images: trade.images.filter((i) => i.id !== imageId),
-    });
+    setImages((prev) => prev.filter((i) => i.id !== imageId));
+    onTradeUpdated?.(trade.id, { _count: { images: images.length - 1 } });
     try {
       await deleteTradeImage(imageId);
     } catch (err) {
       console.error(err);
       // Revert optimistic update on error
-      onTradeUpdated?.(trade.id, { images: trade.images });
+      setImages(prevImages);
+      onTradeUpdated?.(trade.id, { _count: { images: prevImages.length } });
     } finally {
       setDeletingImageId(null);
     }
@@ -273,7 +293,7 @@ export function TradeDrawer({
     });
 
   const pnlColor = totalPnl >= 0 ? "#4ade80" : "#f87171";
-  const imageCount = trade.images.length;
+  const imageCount = imagesLoaded ? images.length : trade._count.images;
 
   return (
     <div className="fixed inset-0 z-[1000] h-[100dvh]" onClick={onClose}>
@@ -453,47 +473,35 @@ export function TradeDrawer({
               </div>
             </div>
           ) : tab === "strategy" ? (
-            <TradeChecklist
-              tradeId={trade.id}
-              checklist={trade.checklist || null}
-              strategies={strategies}
-            />
+            checklistLoaded ? (
+              <TradeChecklist
+                tradeId={trade.id}
+                checklist={fullChecklist || null}
+                strategies={strategies}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 animate-pulse">
+                <div className="w-6 h-6 border-2 border-[#252833] border-t-[#5eead4] rounded-full animate-spin" />
+                <p className="text-[11px] text-[#52525b] tracking-[2px] uppercase font-mono">Cargando estrategia...</p>
+              </div>
+            )
           ) : tab === "info" ? (
             <>
               {/* P&L */}
-              {isOpen && unrealizedPnl != null ? (
-                <div className="text-center py-3 space-y-2">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">P&L Unrealized</div>
-                    <div
-                      className="font-mono text-3xl font-bold"
-                      style={{ color: unrealizedPnl >= 0 ? "#4ade80" : "#f87171" }}
-                    >
-                      {formatPnl(unrealizedPnl)}
-                    </div>
-                  </div>
-                  <div className="flex justify-center gap-4">
-                    <div>
-                      <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Bid</div>
-                      <div className="font-mono text-sm text-[#5eead4]">
-                        {priceData ? priceData.bid.toFixed(dec) : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Ask</div>
-                      <div className="font-mono text-sm text-[#5eead4]">
-                        {priceData ? priceData.ask.toFixed(dec) : "—"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {isOpen ? (
+                <DrawerLivePnl
+                  pair={trade.pair}
+                  direction={trade.direction}
+                  entry={trade.entry}
+                  size={trade.size}
+                />
               ) : (
                 <div className="text-center py-3">
                   <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">
-                    {isOpen ? "P&L" : "P&L Total"}
+                    P&L Total
                   </div>
                   <div className="font-mono text-3xl font-bold" style={{ color: pnlColor }}>
-                    {isOpen ? "—" : formatPnl(totalPnl)}
+                    {formatPnl(totalPnl)}
                   </div>
                 </div>
               )}
@@ -606,13 +614,10 @@ export function TradeDrawer({
                 if (!pos || pos.status !== "OPEN") return null;
                 return (
                   <div className="pt-3 border-t border-[#252833]">
-                    <ClosePositionDialog
+                    <LiveCloseButton
                       positionId={pos.id}
-                      positionLabel={trade.pair}
-                      riskUsd={trade.riskUsd}
-                      livePrice={livePrice}
-                      onPositionClosed={onPositionClosed}
                       trade={trade}
+                      onPositionClosed={onPositionClosed}
                     />
                   </div>
                 );
@@ -724,7 +729,12 @@ export function TradeDrawer({
               </div>
 
               {/* Image gallery */}
-              {trade.images.length === 0 ? (
+              {!imagesLoaded ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 animate-pulse">
+                  <div className="w-6 h-6 border-2 border-[#252833] border-t-[#5eead4] rounded-full animate-spin" />
+                  <p className="text-[11px] text-[#52525b] tracking-[2px] uppercase font-mono">Cargando screenshots...</p>
+                </div>
+              ) : images.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2">
                   <span className="text-2xl text-[#252833]">◈</span>
                   <p className="text-[11px] text-[#52525b] tracking-[2px] uppercase">
@@ -733,7 +743,7 @@ export function TradeDrawer({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {trade.images.map((img) => (
+                  {images.map((img) => (
                     <div key={img.id} className="bg-[#0e1015] border border-[#252833] rounded-lg overflow-hidden">
                       <img
                         src={img.url}

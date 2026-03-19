@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
-import { usePrices } from "@/contexts/price-context";
+import { useState } from "react";
 import { TradeDrawer } from "./trade-drawer";
-import { ClosePositionDialog } from "./close-position-dialog";
+import { LiveTradeSection } from "./live-trade-section";
 
 interface Position {
   id: string;
@@ -16,13 +14,6 @@ interface Position {
   isPartial: boolean;
   partialPct: number | null;
   closedAt: Date | null;
-}
-
-interface TradeImage {
-  id: string;
-  url: string;
-  caption: string | null;
-  createdAt: Date;
 }
 
 interface Trade {
@@ -42,12 +33,11 @@ interface Trade {
   closedAt: Date | null;
   status: string;
   positions: Position[];
-  images: TradeImage[];
+  _count: { images: number };
   checklist?: {
     id: string;
     strategyId: string | null;
-    strategy: { id: string; name: string; fields: unknown } | null;
-    values: unknown;
+    strategy: { id: string; name: string } | null;
   } | null;
 }
 
@@ -118,7 +108,7 @@ export function TradeCard({
   closedAt,
   status,
   positions,
-  images,
+  _count,
   checklist,
   strategies,
   onTradeUpdated,
@@ -126,21 +116,9 @@ export function TradeCard({
   onPositionClosed,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { prices, decimalsMap, subscribePair } = usePrices();
   const isLong = direction === "LONG";
   const dirColor = isLong ? "#4ade80" : "#f87171";
-  const openCount = positions.filter((p) => p.status === "OPEN").length;
-  const priceData = prices[pair];
-  const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
-  const unrealizedPnl = entry != null && size != null && livePrice != null
-    ? calcUnrealizedPnl(entry, livePrice, size, direction)
-    : null;
-  const dec = decimalsMap[pair] ?? 2;
-
-  // Auto-subscribe to pair for OPEN trades (client-side, no server refresh needed)
-  useEffect(() => {
-    if (status === "OPEN") subscribePair(pair);
-  }, [status, pair, subscribePair]);
+  const dec = 2;
 
   return (
     <>
@@ -233,12 +211,12 @@ export function TradeCard({
                 </span>
               );
             })()}
-            {images.length > 0 && (
+            {_count.images > 0 && (
               <span
-                title={`${images.length} screenshot${images.length > 1 ? "s" : ""}`}
+                title={`${_count.images} screenshot${_count.images > 1 ? "s" : ""}`}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-[#71717a] font-mono rounded border border-[#252833]"
               >
-                ▣ {images.length}
+                ▣ {_count.images}
               </span>
             )}
             {checklist?.strategy && (
@@ -340,42 +318,11 @@ export function TradeCard({
           const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
           if (openPos) {
             return (
-              <div className="px-4 md:px-5 pb-4 pt-2 border-t border-[#252833] space-y-2">
-                {/* Live price + unrealized P&L */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
-                        Precio
-                      </span>
-                      <span className="font-mono text-sm text-[#5eead4] font-semibold">
-                        {livePrice != null ? livePrice.toFixed(dec) : "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
-                      P&L
-                    </span>
-                    <span
-                      className="font-mono text-sm font-black"
-                      style={{ color: unrealizedPnl != null ? pnlColor(unrealizedPnl) : "#71717a" }}
-                    >
-                      {unrealizedPnl != null ? formatPnlValue(unrealizedPnl) : "—"}
-                    </span>
-                  </div>
-                </div>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <ClosePositionDialog
-                    positionId={openPos.id}
-                    positionLabel={pair}
-                    riskUsd={riskUsd}
-                    livePrice={livePrice}
-                    onPositionClosed={onPositionClosed}
-                    trade={{ id, pair, direction, riskUsd, riskPct, entry, stopLoss, takeProfit, size, externalId, notes, imageUrl, openedAt, closedAt, status, positions, images, checklist }}
-                  />
-                </div>
-              </div>
+              <LiveTradeSection
+                trade={{ id, pair, direction, riskUsd, riskPct, entry, stopLoss, takeProfit, size, externalId, notes, imageUrl, openedAt, closedAt, status, positions, _count, checklist }}
+                positionId={openPos.id}
+                onPositionClosed={onPositionClosed}
+              />
             );
           }
           return (
@@ -414,7 +361,7 @@ export function TradeCard({
           closedAt,
           status,
           positions,
-          images,
+          _count,
           checklist,
         }}
         open={drawerOpen}

@@ -20,13 +20,6 @@ interface Position {
   closedAt: Date | null;
 }
 
-interface TradeImage {
-  id: string;
-  url: string;
-  caption: string | null;
-  createdAt: Date;
-}
-
 interface Trade {
   id: string;
   pair: string;
@@ -44,12 +37,11 @@ interface Trade {
   closedAt: Date | null;
   status: string;
   positions: Position[];
-  images: TradeImage[];
+  _count: { images: number };
   checklist?: {
     id: string;
     strategyId: string | null;
-    strategy: { id: string; name: string; fields: unknown } | null;
-    values: unknown;
+    strategy: { id: string; name: string } | null;
   } | null;
 }
 

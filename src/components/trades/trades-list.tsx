@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback, useTransition, useMemo } from
 import { TradeCard } from "./trade-card";
 import { TradesSummary } from "./trades-summary";
 import { getTradesPaginated, getTradesForExport } from "@/lib/actions/trades";
-import * as XLSX from "xlsx";
 
 interface Position {
   id: string;
@@ -16,13 +15,6 @@ interface Position {
   isPartial: boolean;
   partialPct: number | null;
   closedAt: Date | null;
-}
-
-interface TradeImage {
-  id: string;
-  url: string;
-  caption: string | null;
-  createdAt: Date;
 }
 
 interface Trade {
@@ -42,12 +34,11 @@ interface Trade {
   closedAt: Date | null;
   status: string;
   positions: Position[];
-  images: TradeImage[];
+  _count: { images: number };
   checklist?: {
     id: string;
     strategyId: string | null;
-    strategy: { id: string; name: string; fields: unknown } | null;
-    values: unknown;
+    strategy: { id: string; name: string } | null;
   } | null;
 }
 
@@ -266,6 +257,7 @@ export function TradesList({
         "Notas": t.notes || "",
       }));
 
+      const XLSX = await import("xlsx");
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Trades");
@@ -503,7 +495,7 @@ export function TradesList({
               closedAt={trade.closedAt}
               status={trade.status}
               positions={trade.positions}
-              images={trade.images}
+              _count={trade._count}
               checklist={trade.checklist}
               strategies={strategies}
               onTradeUpdated={handleTradeUpdated}

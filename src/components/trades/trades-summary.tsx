@@ -1,7 +1,6 @@
 "use client";
 
-import { usePrices } from "@/contexts/price-context";
-import { calcUnrealizedPnl } from "@/lib/calculations";
+import { FloatingPnl } from "./floating-pnl";
 
 interface Trade {
   pair: string;
@@ -28,22 +27,8 @@ export function TradesSummary({
   openTrades: Trade[];
   statusFilter: "ALL" | "OPEN" | "CLOSED";
 }) {
-  const { prices } = usePrices();
-
   const showFloating = statusFilter !== "CLOSED" && openTrades.length > 0;
 
-  let floatingPnl = 0;
-  if (showFloating) {
-    for (const trade of openTrades) {
-      if (!trade.entry || !trade.size) continue;
-      const price = prices[trade.pair];
-      if (!price) continue;
-      const livePrice = trade.direction === "LONG" ? price.bid : price.ask;
-      floatingPnl += calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction);
-    }
-  }
-
-  const floatingSign = floatingPnl >= 0 ? "+" : "";
   const wr = (stats.wins + stats.losses) > 0
     ? ((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1)
     : "—";
@@ -67,11 +52,7 @@ export function TradesSummary({
           <span className="text-[#5eead4]">WR: {wr}%</span>
         </>
       )}
-      {showFloating && floatingPnl !== 0 && (
-        <span className={`ml-auto ${floatingPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-          Flotante: {floatingSign}${Math.abs(floatingPnl).toFixed(2)}
-        </span>
-      )}
+      {showFloating && <FloatingPnl openTrades={openTrades} />}
     </div>
   );
 }

@@ -153,7 +153,17 @@ export async function getTradesPaginated(accountId: string, filters?: {
   const [trades, total, statsAgg] = await Promise.all([
     prisma.trade.findMany({
       where,
-      include: { positions: true, images: { orderBy: { createdAt: "asc" } }, checklist: { include: { strategy: true } } },
+      include: {
+        positions: true,
+        _count: { select: { images: true } },
+        checklist: {
+          select: {
+            id: true,
+            strategyId: true,
+            strategy: { select: { id: true, name: true } },
+          },
+        },
+      },
       orderBy: [{ status: "asc" }, { openedAt: "desc" }],
       take: PAGE_SIZE + 1,
       ...(filters?.cursor && {
