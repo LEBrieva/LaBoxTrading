@@ -99,6 +99,98 @@ export function TradesList({
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
 
+  // ── Optimistic update callbacks ──
+
+  const handleTradeUpdated = useCallback((tradeId: string, updates: Partial<Trade>) => {
+    setTrades((prev) =>
+      prev.map((t) => (t.id === tradeId ? { ...t, ...updates } : t))
+    );
+  }, []);
+
+  const handleTradeDeleted = useCallback((tradeId: string) => {
+    setTrades((prev) => {
+      const trade = prev.find((t) => t.id === tradeId);
+      if (trade) {
+        setStats((s) => ({
+          ...s,
+          total: s.total - 1,
+          openCount: trade.status === "OPEN" ? s.openCount - 1 : s.openCount,
+        }));
+      }
+      return prev.filter((t) => t.id !== tradeId);
+    });
+  }, []);
+
+  const handlePositionClosed = useCallback(
+    (
+      tradeId: string,
+      positionId: string,
+      closedPosition: {
+        status: string;
+        pnl: number;
+        closePrice?: number;
+        closedAt?: string;
+        partialPct?: number;
+      },
+      tradeUpdates?: Partial<Trade>
+    ) => {
+      setTrades((prev) => {
+        let tradeBecomesFullyClosed = false;
+
+        const updated = prev.map((t) => {
+          if (t.id !== tradeId) return t;
+
+          const updatedPositions = t.positions.map((p) => {
+            if (p.id !== positionId) return p;
+            return {
+              ...p,
+              status: closedPosition.status,
+              pnl: closedPosition.pnl,
+              closePrice: closedPosition.closePrice ?? p.closePrice,
+              closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date(),
+              isPartial: closedPosition.status === "PARTIAL",
+              partialPct: closedPosition.partialPct ?? p.partialPct,
+            };
+          });
+
+          // If SL, close ALL open positions (mirrors server logic)
+          const finalPositions = closedPosition.status === "SL"
+            ? updatedPositions.map((p) =>
+                p.status === "OPEN"
+                  ? { ...p, status: "SL", pnl: 0, closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date() }
+                  : p
+              )
+            : updatedPositions;
+
+          // PARTIAL positions are still open — only TP/SL/BE are fully closed
+          const allClosed = finalPositions.every((p) => p.status !== "OPEN" && p.status !== "PARTIAL");
+
+          if (t.status === "OPEN" && allClosed) {
+            tradeBecomesFullyClosed = true;
+          }
+
+          return {
+            ...t,
+            positions: finalPositions,
+            ...(allClosed && {
+              status: "CLOSED",
+              closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date(),
+            }),
+            ...tradeUpdates,
+          };
+        });
+
+        // Adjust stats inside the same synchronous block
+        if (tradeBecomesFullyClosed) {
+          setStats((s) => ({ ...s, openCount: s.openCount - 1 }));
+        }
+
+        return updated;
+      });
+    },
+    []
+  );
+
   // Sync with server data after router.refresh() — re-fetch with active filters
   useEffect(() => {
     if (statusFilter === "ALL" && !dateFrom && !dateTo) {
@@ -414,6 +506,9 @@ export function TradesList({
               images={trade.images}
               checklist={trade.checklist}
               strategies={strategies}
+              onTradeUpdated={handleTradeUpdated}
+              onTradeDeleted={handleTradeDeleted}
+              onPositionClosed={handlePositionClosed}
             />
           ))}
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { closePosition } from "@/lib/actions/trades";
 import { useStats } from "@/contexts/stats-context";
 
@@ -9,11 +8,69 @@ const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
 const labelClass = "text-[10px] uppercase tracking-[1.5px] text-[#71717a] font-semibold";
 
+interface Position {
+  id: string;
+  label: string;
+  status: string;
+  size: number | null;
+  pnl: number;
+  closePrice: number | null;
+  isPartial: boolean;
+  partialPct: number | null;
+  closedAt: Date | null;
+}
+
+interface TradeImage {
+  id: string;
+  url: string;
+  caption: string | null;
+  createdAt: Date;
+}
+
+interface Trade {
+  id: string;
+  pair: string;
+  direction: "LONG" | "SHORT";
+  riskUsd: number;
+  riskPct: number;
+  entry: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  size: number | null;
+  externalId: string | null;
+  notes: string | null;
+  imageUrl: string | null;
+  openedAt: Date;
+  closedAt: Date | null;
+  status: string;
+  positions: Position[];
+  images: TradeImage[];
+  checklist?: {
+    id: string;
+    strategyId: string | null;
+    strategy: { id: string; name: string; fields: unknown } | null;
+    values: unknown;
+  } | null;
+}
+
 interface ClosePositionDialogProps {
   positionId: string;
   positionLabel: string;
   riskUsd: number;
   livePrice?: number | null;
+  onPositionClosed?: (
+    tradeId: string,
+    positionId: string,
+    closedPosition: {
+      status: string;
+      pnl: number;
+      closePrice?: number;
+      closedAt?: string;
+      partialPct?: number;
+    },
+    tradeUpdates?: Partial<Trade>
+  ) => void;
+  trade?: Trade;
 }
 
 export function ClosePositionDialog({
@@ -21,6 +78,8 @@ export function ClosePositionDialog({
   positionLabel,
   riskUsd,
   livePrice,
+  onPositionClosed,
+  trade,
 }: ClosePositionDialogProps) {
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<"TP" | "SL" | "BE" | "PARTIAL">("TP");
@@ -29,7 +88,6 @@ export function ClosePositionDialog({
   const [partialPct, setPartialPct] = useState("50");
   const [closedAt, setClosedAt] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { refreshStats } = useStats();
 
   // Pre-fill exit price with live price when dialog opens
@@ -64,8 +122,31 @@ export function ClosePositionDialog({
       );
       setOpen(false);
       setExitPrice("");
+
+      // Build trade-level updates for partial closes (size reduction)
+      let tradeUpdates: Partial<Trade> | undefined;
+      if (result === "PARTIAL" && trade && trade.size != null) {
+        const pctVal = parseFloat(partialPct);
+        const remaining = trade.size * (1 - pctVal / 100);
+        tradeUpdates = { size: Math.round(remaining * 1e8) / 1e8 };
+      }
+
+      if (onPositionClosed && trade) {
+        onPositionClosed(
+          trade.id,
+          positionId,
+          {
+            status: result,
+            pnl: parseFloat(pnl),
+            closePrice: exitPrice ? parseFloat(exitPrice) : undefined,
+            closedAt: closedAt || new Date().toISOString(),
+            partialPct: result === "PARTIAL" ? parseFloat(partialPct) : undefined,
+          },
+          tradeUpdates
+        );
+      }
+
       refreshStats();
-      router.refresh();
     } catch (err) {
       console.error("Error closing position:", err);
       alert("Error al cerrar: " + (err instanceof Error ? err.message : String(err)));

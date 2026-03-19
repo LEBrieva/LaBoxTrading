@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { formatPnl, formatCurrency, calcUnrealizedPnl } from "@/lib/calculations";
 import { usePrices } from "@/contexts/price-context";
 import { useStats } from "@/contexts/stats-context";
@@ -74,14 +73,29 @@ export function TradeDrawer({
   open,
   onClose,
   strategies = [],
+  onTradeUpdated,
+  onTradeDeleted,
+  onPositionClosed,
 }: {
   trade: Trade;
   open: boolean;
   onClose: () => void;
   strategies?: { id: string; name: string; fields: unknown }[];
+  onTradeUpdated?: (tradeId: string, updates: Partial<Trade>) => void;
+  onTradeDeleted?: (tradeId: string) => void;
+  onPositionClosed?: (
+    tradeId: string,
+    positionId: string,
+    closedPosition: {
+      status: string;
+      pnl: number;
+      closePrice?: number;
+      closedAt?: string;
+      partialPct?: number;
+    },
+    tradeUpdates?: Partial<Trade>
+  ) => void;
 }) {
-  const router = useRouter();
-  const [isRefreshing, startTransition] = useTransition();
   const { prices, decimalsMap } = usePrices();
   const { refreshStats } = useStats();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
@@ -99,7 +113,6 @@ export function TradeDrawer({
 
   const [tab, setTab] = useState<Tab>("info");
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [entry, setEntry] = useState(trade.entry?.toString() ?? "");
   const [stopLoss, setStopLoss] = useState(trade.stopLoss?.toString() ?? "");
   const [takeProfit, setTakeProfit] = useState(trade.takeProfit?.toString() ?? "");
@@ -157,21 +170,36 @@ export function TradeDrawer({
   if (!open) return null;
 
   async function handleSave() {
-    setSaving(true);
+    const updates = {
+      entry: entry ? parseFloat(entry) : null,
+      stopLoss: stopLoss ? parseFloat(stopLoss) : null,
+      takeProfit: takeProfit ? parseFloat(takeProfit) : null,
+      notes: notes || null,
+      openedAt: new Date(openedAt),
+    };
+
+    // Optimistic: update UI immediately
+    setEditing(false);
+    onTradeUpdated?.(trade.id, updates);
+
+    // Server action in background
     try {
       await updateTrade(trade.id, {
-        entry: entry ? parseFloat(entry) : null,
-        stopLoss: stopLoss ? parseFloat(stopLoss) : null,
-        takeProfit: takeProfit ? parseFloat(takeProfit) : null,
-        notes: notes || null,
+        ...updates,
         openedAt,
       });
-      setEditing(false);
-      startTransition(() => startTransition(() => router.refresh()));
     } catch (err) {
       console.error(err);
-    } finally {
-      setSaving(false);
+      // Rollback: restore original values and reopen editing
+      onTradeUpdated?.(trade.id, {
+        entry: trade.entry,
+        stopLoss: trade.stopLoss,
+        takeProfit: trade.takeProfit,
+        notes: trade.notes,
+        openedAt: trade.openedAt,
+      });
+      setEditing(true);
+      alert("Error al guardar. Intente de nuevo.");
     }
   }
 
@@ -201,9 +229,16 @@ export function TradeDrawer({
       if (!user) return;
 
       const url = await uploadTradeScreenshot(user.id, newFile);
-      await addTradeImage(trade.id, url, newCaption || undefined);
+      const newImage = await addTradeImage(trade.id, url, newCaption || undefined);
       resetUploadForm();
-      startTransition(() => router.refresh());
+      onTradeUpdated?.(trade.id, {
+        images: [...trade.images, {
+          id: newImage.id,
+          url: newImage.url,
+          caption: newImage.caption,
+          createdAt: newImage.createdAt,
+        }],
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -213,11 +248,17 @@ export function TradeDrawer({
 
   async function handleDeleteImage(imageId: string) {
     setDeletingImageId(imageId);
+    // Optimistic: update UI immediately
+    onTradeUpdated?.(trade.id, {
+      images: trade.images.filter((i) => i.id !== imageId),
+    });
     try {
       await deleteTradeImage(imageId);
-      startTransition(() => router.refresh());
     } catch (err) {
       console.error(err);
+      // Revert optimistic update on error
+      onTradeUpdated?.(trade.id, { images: trade.images });
+    } finally {
       setDeletingImageId(null);
     }
   }
@@ -339,12 +380,6 @@ export function TradeDrawer({
 
         {/* Content */}
         <div className="relative flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-          {(saving || (isRefreshing && !editing)) && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#08090c]/70 backdrop-blur-sm">
-              <div className="w-6 h-6 border-2 border-[#5eead4]/30 border-t-[#5eead4] rounded-full animate-spin" />
-              <p className="text-[11px] text-[#d4d4d8] font-mono tracking-[1px]">Actualizando...</p>
-            </div>
-          )}
           {tab === "positions" ? (
             <div className="space-y-3">
               {trade.positions
@@ -558,10 +593,9 @@ export function TradeDrawer({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving}
-                    className="px-5 py-2 rounded-lg bg-[#5eead4] text-[#08090c] text-[13px] font-bold hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+                    className="px-5 py-2 rounded-lg bg-[#5eead4] text-[#08090c] text-[13px] font-bold hover:brightness-110 transition-all cursor-pointer"
                   >
-                    {saving ? "Guardando..." : "Guardar"}
+                    Guardar
                   </button>
                 </div>
               )}
@@ -577,6 +611,8 @@ export function TradeDrawer({
                       positionLabel={trade.pair}
                       riskUsd={trade.riskUsd}
                       livePrice={livePrice}
+                      onPositionClosed={onPositionClosed}
+                      trade={trade}
                     />
                   </div>
                 );
@@ -606,15 +642,14 @@ export function TradeDrawer({
                           disabled={deleting}
                           onClick={async () => {
                             setDeleting(true);
+                            onClose();
+                            onTradeDeleted?.(trade.id);
                             try {
                               await deleteTrade(trade.id);
-                              onClose();
                               refreshStats();
-                              startTransition(() => router.refresh());
                             } catch (err) {
                               console.error(err);
-                              setDeleting(false);
-                              setConfirmDelete(false);
+                              alert("Error al eliminar. Recargá la página si es necesario.");
                             }
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#f87171] text-[#08090c] text-[11px] font-bold hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"

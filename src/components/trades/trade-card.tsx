@@ -25,7 +25,7 @@ interface TradeImage {
   createdAt: Date;
 }
 
-interface TradeCardProps {
+interface Trade {
   id: string;
   pair: string;
   direction: "LONG" | "SHORT";
@@ -49,7 +49,24 @@ interface TradeCardProps {
     strategy: { id: string; name: string; fields: unknown } | null;
     values: unknown;
   } | null;
+}
+
+interface TradeCardProps extends Trade {
   strategies?: { id: string; name: string; fields: unknown }[];
+  onTradeUpdated?: (tradeId: string, updates: Partial<Trade>) => void;
+  onTradeDeleted?: (tradeId: string) => void;
+  onPositionClosed?: (
+    tradeId: string,
+    positionId: string,
+    closedPosition: {
+      status: string;
+      pnl: number;
+      closePrice?: number;
+      closedAt?: string;
+      partialPct?: number;
+    },
+    tradeUpdates?: Partial<Trade>
+  ) => void;
 }
 
 function statusColor(status: string): string {
@@ -104,6 +121,9 @@ export function TradeCard({
   images,
   checklist,
   strategies,
+  onTradeUpdated,
+  onTradeDeleted,
+  onPositionClosed,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { prices, decimalsMap, subscribePair } = usePrices();
@@ -351,6 +371,8 @@ export function TradeCard({
                     positionLabel={pair}
                     riskUsd={riskUsd}
                     livePrice={livePrice}
+                    onPositionClosed={onPositionClosed}
+                    trade={{ id, pair, direction, riskUsd, riskPct, entry, stopLoss, takeProfit, size, externalId, notes, imageUrl, openedAt, closedAt, status, positions, images, checklist }}
                   />
                 </div>
               </div>
@@ -398,6 +420,9 @@ export function TradeCard({
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         strategies={strategies}
+        onTradeUpdated={onTradeUpdated}
+        onTradeDeleted={onTradeDeleted}
+        onPositionClosed={onPositionClosed}
       />
     </>
   );
