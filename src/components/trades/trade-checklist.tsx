@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { saveTradeChecklist, deleteTradeChecklist, getTradeChecklist } from "@/lib/actions/trade-checklist";
+import { saveTradeChecklist, deleteTradeChecklist } from "@/lib/actions/trade-checklist";
 import type { StrategyFieldDef, ChecklistValues } from "@/lib/types/strategy";
 
 const inputClass =
@@ -61,14 +61,13 @@ export function TradeChecklist({
     if (!activeStrategy) return;
     setSaving(true);
     try {
-      await saveTradeChecklist({
+      const result = await saveTradeChecklist({
         tradeId,
         strategyId: activeStrategy.id,
         values,
       });
-      const fresh = await getTradeChecklist(tradeId);
-      setChecklist(fresh);
-      setValues((fresh?.values as ChecklistValues) || {});
+      setChecklist(result);
+      setValues((result.values as ChecklistValues) || {});
     } catch (err) {
       console.error(err);
     } finally {
@@ -78,17 +77,16 @@ export function TradeChecklist({
 
   async function handleAssociate() {
     if (!selectedStrategyId) return;
+    const strategy = strategies.find((s) => s.id === selectedStrategyId);
     setSaving(true);
     try {
-      await saveTradeChecklist({
+      const result = await saveTradeChecklist({
         tradeId,
         strategyId: selectedStrategyId,
         values: {},
       });
-      const fresh = await getTradeChecklist(tradeId);
-      setChecklist(fresh);
-      setValues((fresh?.values as ChecklistValues) || {});
-      const strategy = strategies.find((s) => s.id === selectedStrategyId);
+      setChecklist(result);
+      setValues((result.values as ChecklistValues) || {});
       onChecklistChanged?.({
         strategyId: selectedStrategyId,
         strategy: strategy ? { id: strategy.id, name: strategy.name } : null,

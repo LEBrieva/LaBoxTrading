@@ -173,7 +173,8 @@ export function TradeDrawer({
         setChecklistLoaded(true);
       }
     }
-  }, [open, trade.id, trade.checklist?.strategyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, trade.id]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

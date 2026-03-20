@@ -38,9 +38,9 @@ export async function saveTradeChecklist(raw: {
       strategyId: data.strategyId,
       values: jsonValues,
     },
+    include: { strategy: true },
   });
 
-  revalidatePath("/trades");
   return checklist;
 }
 
@@ -52,6 +52,4 @@ export async function deleteTradeChecklist(tradeId: string) {
   await prisma.tradeChecklist.delete({
     where: { tradeId },
   });
-
-  revalidatePath("/trades");
 }
