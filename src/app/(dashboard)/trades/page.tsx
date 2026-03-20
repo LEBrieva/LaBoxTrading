@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import { getAccounts } from "@/lib/actions/accounts";
+import { getAccounts, getRiskRules } from "@/lib/actions/accounts";
 import { getTradesPaginated } from "@/lib/actions/trades";
 import { getSymbols, getUsedPairs } from "@/lib/actions/symbols";
 import type { Broker } from "@/generated/prisma/client";
@@ -9,8 +9,11 @@ import { TradesList } from "@/components/trades/trades-list";
 import { TradeForm } from "@/components/trades/trade-form";
 
 async function TradeFormSection({ accountId, broker }: { accountId: string; broker: Broker }) {
-  const symbols = await getSymbols(broker);
-  return <TradeForm accountId={accountId} symbols={symbols} />;
+  const [symbols, riskRules] = await Promise.all([
+    getSymbols(broker),
+    getRiskRules(accountId),
+  ]);
+  return <TradeForm accountId={accountId} symbols={symbols} riskRules={riskRules} />;
 }
 
 async function TradesListSection({

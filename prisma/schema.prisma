@@ -31,8 +31,10 @@ model Account {
   currency       String   @default("USD")
   walletAddress  String?  @map("wallet_address")
   walletNetwork  String?  @map("wallet_network")
-  createdAt      DateTime @default(now()) @map("created_at")
+  riskRules      Json?    @map("risk_rules")
+  createdAt      DateTime      @default(now()) @map("created_at")
   trades         Trade[]
+  transactions   AccountTransaction[]
 
   @@map("accounts")
 }
@@ -143,6 +145,25 @@ model TradeChecklist {
 
   @@index([strategyId])
   @@map("trade_checklists")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+model AccountTransaction {
+  id        String          @id @default(cuid())
+  accountId String          @map("account_id")
+  account   Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type      TransactionType
+  amount    Float
+  note      String?
+  date      DateTime        @default(now())
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@index([accountId, date])
+  @@map("transactions")
 }
 
 model Symbol {

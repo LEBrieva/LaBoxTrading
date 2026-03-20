@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { saveTradeChecklist, deleteTradeChecklist } from "@/lib/actions/trade-checklist";
+import { saveTradeChecklist, deleteTradeChecklist, getTradeChecklist } from "@/lib/actions/trade-checklist";
 import type { StrategyFieldDef, ChecklistValues } from "@/lib/types/strategy";
 
 const inputClass =
@@ -23,14 +22,16 @@ interface Checklist {
 
 export function TradeChecklist({
   tradeId,
-  checklist,
+  checklist: initialChecklist,
   strategies,
+  onChecklistChanged,
 }: {
   tradeId: string;
   checklist: Checklist | null;
   strategies: Strategy[];
+  onChecklistChanged?: (checklist: { strategyId: string | null; strategy: { id: string; name: string } | null } | null) => void;
 }) {
-  const router = useRouter();
+  const [checklist, setChecklist] = useState(initialChecklist);
   const [selectedStrategyId, setSelectedStrategyId] = useState(checklist?.strategyId || "");
   const [values, setValues] = useState<ChecklistValues>(
     (checklist?.values as ChecklistValues) || {}
@@ -65,10 +66,12 @@ export function TradeChecklist({
         strategyId: activeStrategy.id,
         values,
       });
-      router.refresh();
-      // Keep saving=true until refresh re-mounts with new data
+      const fresh = await getTradeChecklist(tradeId);
+      setChecklist(fresh);
+      setValues((fresh?.values as ChecklistValues) || {});
     } catch (err) {
       console.error(err);
+    } finally {
       setSaving(false);
     }
   }
@@ -82,10 +85,17 @@ export function TradeChecklist({
         strategyId: selectedStrategyId,
         values: {},
       });
-      router.refresh();
-      // Keep saving=true until refresh re-mounts with new data
+      const fresh = await getTradeChecklist(tradeId);
+      setChecklist(fresh);
+      setValues((fresh?.values as ChecklistValues) || {});
+      const strategy = strategies.find((s) => s.id === selectedStrategyId);
+      onChecklistChanged?.({
+        strategyId: selectedStrategyId,
+        strategy: strategy ? { id: strategy.id, name: strategy.name } : null,
+      });
     } catch (err) {
       console.error(err);
+    } finally {
       setSaving(false);
     }
   }
@@ -94,12 +104,13 @@ export function TradeChecklist({
     setRemoving(true);
     try {
       await deleteTradeChecklist(tradeId);
+      setChecklist(null);
       setValues({});
       setSelectedStrategyId("");
-      router.refresh();
-      // Keep removing=true until refresh re-mounts with new data
+      onChecklistChanged?.(null);
     } catch (err) {
       console.error(err);
+    } finally {
       setRemoving(false);
     }
   }

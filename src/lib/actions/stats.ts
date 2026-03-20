@@ -338,3 +338,98 @@ export async function getWeeklyStats(accountId: string) {
   }
   return weekly;
 }
+
+// ── Timeline ──────────────────────────────────────────────────────
+
+export interface TimelineEntry {
+  id: string;
+  type: "DEPOSIT" | "WITHDRAWAL" | "TRADE";
+  date: string;
+  amount: number;
+  balance: number;
+  label: string;
+  note: string | null;
+}
+
+const TIMELINE_PAGE_SIZE = 30;
+
+export async function getTimelineData(accountId: string, cursor?: string) {
+  const account = await verifyAccountOwnership(accountId);
+
+  // UNION: transactions + closed trades with PnL
+  const rows = await prisma.$queryRaw<
+    { id: string; type: string; date: Date; amount: number; label: string; note: string | null }[]
+  >`
+    (
+      SELECT
+        tx.id,
+        tx.type::text AS type,
+        tx.date,
+        tx.amount::float AS amount,
+        CASE tx.type
+          WHEN 'DEPOSIT' THEN 'Depósito'
+          WHEN 'WITHDRAWAL' THEN 'Retiro'
+        END AS label,
+        tx.note
+      FROM transactions tx
+      WHERE tx.account_id = ${accountId}
+    )
+    UNION ALL
+    (
+      SELECT
+        t.id,
+        'TRADE' AS type,
+        t.closed_at AS date,
+        COALESCE(SUM(p.pnl), 0)::float AS amount,
+        t.pair || ' ' || t.direction AS label,
+        NULL AS note
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId}
+        AND t.status = 'CLOSED'
+        AND t.closed_at IS NOT NULL
+      GROUP BY t.id, t.closed_at, t.pair, t.direction
+    )
+    ORDER BY date DESC
+  `;
+
+  // Compute running balance from initialCapital
+  // First, compute forward (chronological) to get balances, then reverse for display
+  const chronological = [...rows].reverse();
+  let balance = account.initialCapital;
+  const balanceMap = new Map<string, number>();
+
+  for (const row of chronological) {
+    if (row.type === "DEPOSIT") {
+      balance += row.amount;
+    } else if (row.type === "WITHDRAWAL") {
+      balance -= row.amount;
+    } else {
+      balance += row.amount;
+    }
+    balanceMap.set(row.id, Math.round(balance * 100) / 100);
+  }
+
+  // Apply cursor-based pagination
+  let startIdx = 0;
+  if (cursor) {
+    const cursorIdx = rows.findIndex((r) => r.id === cursor);
+    if (cursorIdx >= 0) startIdx = cursorIdx + 1;
+  }
+
+  const page = rows.slice(startIdx, startIdx + TIMELINE_PAGE_SIZE + 1);
+  const hasMore = page.length > TIMELINE_PAGE_SIZE;
+  if (hasMore) page.pop();
+
+  const entries: TimelineEntry[] = page.map((row) => ({
+    id: row.id,
+    type: row.type as "DEPOSIT" | "WITHDRAWAL" | "TRADE",
+    date: row.date.toISOString(),
+    amount: row.type === "WITHDRAWAL" ? -row.amount : row.amount,
+    balance: balanceMap.get(row.id) ?? 0,
+    label: row.label,
+    note: row.note,
+  }));
+
+  return { entries, hasMore };
+}

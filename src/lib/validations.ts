@@ -62,6 +62,22 @@ export const closePositionSchema = z.object({
   closePrice: z.number().optional(),
 });
 
+// ── Transactions ─────────────────────────────────────────────────
+export const createTransactionSchema = z.object({
+  accountId: cuid,
+  type: z.enum(["DEPOSIT", "WITHDRAWAL"]),
+  amount: z.number().positive("El monto debe ser mayor a 0"),
+  date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }),
+  note: z.string().max(500).optional(),
+});
+
+export const updateTransactionSchema = z.object({
+  type: z.enum(["DEPOSIT", "WITHDRAWAL"]).optional(),
+  amount: z.number().positive("El monto debe ser mayor a 0").optional(),
+  date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }).optional(),
+  note: z.string().max(500).nullable().optional(),
+});
+
 // ── Trade Images ──────────────────────────────────────────────────
 export const addTradeImageSchema = z.object({
   tradeId: cuid,

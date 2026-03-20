@@ -45,6 +45,7 @@ interface TradeCardProps extends Trade {
   strategies?: { id: string; name: string; fields: unknown }[];
   onTradeUpdated?: (tradeId: string, updates: Partial<Trade>) => void;
   onTradeDeleted?: (tradeId: string) => void;
+  onTradeRestored?: (trade: Trade) => void;
   onPositionClosed?: (
     tradeId: string,
     positionId: string,
@@ -113,6 +114,7 @@ export function TradeCard({
   strategies,
   onTradeUpdated,
   onTradeDeleted,
+  onTradeRestored,
   onPositionClosed,
 }: TradeCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -238,7 +240,7 @@ export function TradeCard({
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Entrada
             </span>
-            <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
+            <span className="font-mono text-sm text-[#d4d4d8] font-semibold s">
               {entry?.toFixed(dec) ?? "—"}
             </span>
           </div>
@@ -256,7 +258,7 @@ export function TradeCard({
                         {isBE ? "BE" : "SL"}
                       </span>
                       <span
-                        className="font-mono text-sm font-semibold"
+                        className="font-mono text-sm font-semibold s"
                         style={{ color: isBE ? "#fbbf24" : "#f87171" }}
                       >
                         {stopLoss?.toFixed(dec) ?? "—"}
@@ -269,7 +271,7 @@ export function TradeCard({
                 <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
                   TP
                 </span>
-                <span className="font-mono text-sm font-semibold text-[#4ade80]">
+                <span className="font-mono text-sm font-semibold text-[#4ade80] s">
                   {takeProfit?.toFixed(dec) ?? "—"}
                 </span>
               </div>
@@ -280,7 +282,7 @@ export function TradeCard({
                 <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
                   Cierre
                 </span>
-                <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
+                <span className="font-mono text-sm text-[#d4d4d8] font-semibold s">
                   {(() => {
                     const closedPos = positions.filter((p) => p.closePrice != null);
                     if (closedPos.length === 0) return "—";
@@ -294,7 +296,7 @@ export function TradeCard({
                   P&L
                 </span>
                 <span
-                  className="font-mono text-sm font-black"
+                  className="font-mono text-sm font-black s"
                   style={{ color: pnlColor(positions.reduce((s, p) => s + p.pnl, 0)) }}
                 >
                   {formatPnlValue(positions.reduce((s, p) => s + p.pnl, 0))}
@@ -306,7 +308,7 @@ export function TradeCard({
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] mb-0.5 font-medium">
               Tamaño
             </span>
-            <span className="font-mono text-sm text-[#d4d4d8] font-semibold">
+            <span className="font-mono text-sm text-[#d4d4d8] font-semibold s">
               {size ?? "—"}
             </span>
           </div>
@@ -331,7 +333,7 @@ export function TradeCard({
                 Resultado
               </span>
               <span
-                className="font-mono text-sm font-black"
+                className="font-mono text-sm font-black s"
                 style={{ color: pnlColor(totalPnl) }}
               >
                 {formatPnlValue(totalPnl)}
@@ -369,6 +371,7 @@ export function TradeCard({
         strategies={strategies}
         onTradeUpdated={onTradeUpdated}
         onTradeDeleted={onTradeDeleted}
+        onTradeRestored={onTradeRestored}
         onPositionClosed={onPositionClosed}
       />
     </>

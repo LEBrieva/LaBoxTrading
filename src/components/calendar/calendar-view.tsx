@@ -115,7 +115,7 @@ export function CalendarView({
                 {monthTrades} trades
               </span>
               <span
-                className={`font-mono text-[11px] font-bold ${
+                className={`font-mono text-[11px] font-bold s ${
                   monthPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"
                 }`}
               >
@@ -220,7 +220,7 @@ export function CalendarView({
                     </span>
                   </div>
                   <div
-                    className={`font-mono text-[13px] font-bold ${
+                    className={`font-mono text-[13px] font-bold s ${
                       dayData.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"
                     }`}
                   >

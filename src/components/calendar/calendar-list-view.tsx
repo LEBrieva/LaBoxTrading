@@ -59,7 +59,7 @@ export function CalendarListView({ data, year, month }: CalendarListViewProps) {
             </span>
           </div>
           <span
-            className={`font-mono text-sm font-bold ${
+            className={`font-mono text-sm font-bold s ${
               pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"
             }`}
           >

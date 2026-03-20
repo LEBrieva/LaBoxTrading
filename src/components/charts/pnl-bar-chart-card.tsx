@@ -103,7 +103,7 @@ export function PnlBarChartCard({
           </button>
         </div>
       </div>
-      <div className="p-3 md:p-4">
+      <div className="p-3 md:p-4 s">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <span className="text-2xl text-[#252833]">◈</span>

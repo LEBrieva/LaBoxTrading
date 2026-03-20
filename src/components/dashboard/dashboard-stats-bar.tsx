@@ -31,10 +31,10 @@ export function DashboardStatsBar() {
     <div className="grid grid-cols-2 md:grid-cols-5 border-b border-[#252833] bg-[#0e1015]">
       <div className="px-4 py-3 md:px-6 md:py-4 border-b md:border-b-0 md:border-r border-[#252833]">
         <p className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1.5 font-medium">P&L Total</p>
-        <p className="font-mono text-base md:text-xl font-bold" style={{ color: pnlIsPositive ? "#4ade80" : "#f87171" }}>
+        <p className="font-mono text-base md:text-xl font-bold s" style={{ color: pnlIsPositive ? "#4ade80" : "#f87171" }}>
           {pnlPrefix}{pnlValue}
         </p>
-        <p className="font-mono text-[10px] text-[#71717a] mt-0.5">{formatPct(stats.totalPnlPct)}</p>
+        <p className="font-mono text-[10px] text-[#71717a] mt-0.5 s">{formatPct(stats.totalPnlPct)}</p>
       </div>
 
       <div className="px-4 py-3 md:px-6 md:py-4 border-b md:border-b-0 md:border-r border-[#252833]">
@@ -53,14 +53,14 @@ export function DashboardStatsBar() {
 
       <div className="px-4 py-3 md:px-6 md:py-4 border-b md:border-b-0 md:border-r border-[#252833]">
         <p className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1.5 font-medium">Mayor Ganancia</p>
-        <p className="font-mono text-base md:text-xl font-bold" style={{ color: "#4ade80" }}>+${stats.bestTrade.toFixed(2)}</p>
-        <p className="font-mono text-[10px] text-[#71717a] mt-0.5">peor {formatPnl(stats.worstTrade)}</p>
+        <p className="font-mono text-base md:text-xl font-bold s" style={{ color: "#4ade80" }}>+${stats.bestTrade.toFixed(2)}</p>
+        <p className="font-mono text-[10px] text-[#71717a] mt-0.5 s">peor {formatPnl(stats.worstTrade)}</p>
       </div>
 
       <div className="col-span-2 md:col-span-1 px-4 py-3 md:px-6 md:py-4">
         <p className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1.5 font-medium">Objetivo</p>
         <p className="font-mono text-base md:text-xl font-bold" style={{ color: "#fbbf24" }}>{progress.toFixed(1)}%</p>
-        <p className="font-mono text-[10px] text-[#71717a] mt-0.5">{formatCurrency(stats.targetCapital)}</p>
+        <p className="font-mono text-[10px] text-[#71717a] mt-0.5 s">{formatCurrency(stats.targetCapital)}</p>
       </div>
     </div>
   );

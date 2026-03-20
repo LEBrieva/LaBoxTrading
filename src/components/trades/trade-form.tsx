@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createTrade } from "@/lib/actions/trades";
 import { addTradeImage } from "@/lib/actions/trade-images";
+import { getDailyPnl } from "@/lib/actions/accounts";
 import { calcRiskUsd, calcRiskPct, calcTpPrice, calcEstimatedGain } from "@/lib/calculations";
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
@@ -20,12 +21,18 @@ interface SymbolItem {
   decimals: number;
 }
 
+interface RiskRules {
+  dailyLossLimit?: number;
+  maxRiskPct?: number;
+}
+
 interface TradeFormProps {
   accountId: string;
   symbols?: SymbolItem[];
+  riskRules?: RiskRules;
 }
 
-export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
+export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeFormProps) {
   const { stats: { currentCapital } } = useStats();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,6 +51,8 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
   const [openedAt, setOpenedAt] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [riskWarnings, setRiskWarnings] = useState<string[]>([]);
+  const [showRiskConfirm, setShowRiskConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -107,8 +116,44 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
     }
   }
 
+  async function checkRiskRules(): Promise<string[]> {
+    const warnings: string[] = [];
+    const pct = parseFloat(riskPct);
+
+    if (riskRules.maxRiskPct && !isNaN(pct) && pct > riskRules.maxRiskPct) {
+      warnings.push(`El riesgo de este trade (${pct.toFixed(1)}%) supera tu límite de ${riskRules.maxRiskPct}%`);
+    }
+
+    if (riskRules.dailyLossLimit) {
+      try {
+        const dailyPnl = await getDailyPnl(accountId);
+        if (dailyPnl < 0 && Math.abs(dailyPnl) >= riskRules.dailyLossLimit) {
+          warnings.push(`Ya perdiste $${Math.abs(dailyPnl).toFixed(2)} hoy — tu límite diario es $${riskRules.dailyLossLimit.toFixed(2)}`);
+        }
+      } catch {
+        // If check fails, don't block
+      }
+    }
+
+    return warnings;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Check risk rules before submitting
+    const hasRules = riskRules.dailyLossLimit || riskRules.maxRiskPct;
+    if (hasRules && !showRiskConfirm) {
+      const warnings = await checkRiskRules();
+      if (warnings.length > 0) {
+        setRiskWarnings(warnings);
+        setShowRiskConfirm(true);
+        return;
+      }
+    }
+
+    setShowRiskConfirm(false);
+    setRiskWarnings([]);
     setLoading(true);
     try {
       const trade = await createTrade({
@@ -308,7 +353,7 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#14161e] border border-[#252833] rounded-lg p-3">
                 <div>
                   <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] mb-1 font-mono">Riesgo total</div>
-                  <div className="font-mono text-[13px] font-bold text-[#f87171]">
+                  <div className="font-mono text-[13px] font-bold text-[#f87171] s">
                     {riskUsd ? `-$${parseFloat(riskUsd).toFixed(2)}` : "\u2014"}
                   </div>
                 </div>
@@ -320,7 +365,7 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
                 </div>
                 <div>
                   <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] mb-1 font-mono">Potencial TP</div>
-                  <div className="font-mono text-[13px] font-bold text-[#4ade80]">
+                  <div className="font-mono text-[13px] font-bold text-[#4ade80] s">
                     {riskUsd ? `+$${parseFloat(riskUsd).toFixed(2)}` : "\u2014"}
                   </div>
                 </div>
@@ -344,7 +389,7 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
                   </div>
                   <div>
                     <div className="text-[10px] text-[#52525b] mb-1 font-mono">Ganancia estimada</div>
-                    <div className="font-mono text-sm font-bold py-1.5 text-[#4ade80]">
+                    <div className="font-mono text-sm font-bold py-1.5 text-[#4ade80] s">
                       {estimatedGain !== null ? `+$${estimatedGain.toFixed(2)}` : "\u2014"}
                     </div>
                   </div>
@@ -402,11 +447,25 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
                 </div>
               </div>
 
+              {/* Risk warning */}
+              {showRiskConfirm && riskWarnings.length > 0 && (
+                <div className="rounded-lg border border-[#fbbf24]/30 bg-[#fbbf24]/5 p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[#fbbf24] text-base">⚠</span>
+                    <span className="text-[12px] font-bold text-[#fbbf24] uppercase tracking-[1px]">Alerta de riesgo</span>
+                  </div>
+                  {riskWarnings.map((w, i) => (
+                    <p key={i} className="text-[12px] text-[#fbbf24] font-mono">{w}</p>
+                  ))}
+                  <p className="text-[10px] text-[#fbbf24]/60 font-mono mt-1">Tocá "Abrir igual" para confirmar</p>
+                </div>
+              )}
+
               {/* Footer */}
               <div className="flex justify-end gap-3 pt-2 border-t border-[#252833]">
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); setShowRiskConfirm(false); setRiskWarnings([]); }}
                   className="px-4 py-2 rounded-lg border border-[#252833] text-[#71717a] text-[13px] font-semibold hover:border-[#2f3340] hover:text-[#d4d4d8] transition-colors"
                 >
                   Cancelar
@@ -414,9 +473,13 @@ export function TradeForm({ accountId, symbols = [] }: TradeFormProps) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2 rounded-lg bg-[#5eead4] text-[#08090c] text-[13px] font-bold hover:brightness-110 transition-all hover:-translate-y-[1px] disabled:opacity-50"
+                  className={`px-5 py-2 rounded-lg text-[13px] font-bold hover:brightness-110 transition-all hover:-translate-y-[1px] disabled:opacity-50 ${
+                    showRiskConfirm
+                      ? "bg-[#fbbf24] text-[#08090c]"
+                      : "bg-[#5eead4] text-[#08090c]"
+                  }`}
                 >
-                  {loading ? "Abriendo..." : "Abrir trade"}
+                  {loading ? "Abriendo..." : showRiskConfirm ? "Abrir igual" : "Abrir trade"}
                 </button>
               </div>
             </form>

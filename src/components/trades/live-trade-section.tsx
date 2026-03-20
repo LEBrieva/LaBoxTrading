@@ -95,7 +95,7 @@ export function LiveTradeSection({
             <span className="block text-[9px] uppercase tracking-[2px] text-[#52525b] font-medium">
               Precio
             </span>
-            <span className="font-mono text-sm text-[#5eead4] font-semibold">
+            <span className="font-mono text-sm text-[#5eead4] font-semibold s">
               {livePrice != null ? livePrice.toFixed(dec) : "—"}
             </span>
           </div>
@@ -105,7 +105,7 @@ export function LiveTradeSection({
             P&L
           </span>
           <span
-            className="font-mono text-sm font-black"
+            className="font-mono text-sm font-black s"
             style={{ color: unrealizedPnl != null ? pnlColor(unrealizedPnl) : "#71717a" }}
           >
             {unrealizedPnl != null ? formatPnlValue(unrealizedPnl) : "—"}

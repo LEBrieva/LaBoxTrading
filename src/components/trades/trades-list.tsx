@@ -87,6 +87,7 @@ export function TradesList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [resultFilter, setResultFilter] = useState<ResultFilter>("ALL");
   const [pairFilter, setPairFilter] = useState("");
+  const [strategyFilter, setStrategyFilter] = useState("");
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
 
@@ -109,6 +110,22 @@ export function TradesList({
         }));
       }
       return prev.filter((t) => t.id !== tradeId);
+    });
+  }, []);
+
+  const handleTradeRestored = useCallback((trade: Trade) => {
+    setTrades((prev) => {
+      if (prev.some((t) => t.id === trade.id)) return prev;
+      const updated = [...prev, trade].sort((a, b) => {
+        if (a.status !== b.status) return a.status === "OPEN" ? -1 : 1;
+        return new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime();
+      });
+      setStats((s) => ({
+        ...s,
+        total: s.total + 1,
+        openCount: trade.status === "OPEN" ? s.openCount + 1 : s.openCount,
+      }));
+      return updated;
     });
   }, []);
 
@@ -182,15 +199,21 @@ export function TradesList({
     []
   );
 
-  // Sync with server data after router.refresh() — re-fetch with active filters
+  // Sync with server data — only if there are genuinely new trades (e.g. after creating one)
+  // Skip if initialTrades is just a subset of what we already have (edit/delete/close revalidation)
   useEffect(() => {
+    const currentIds = new Set(trades.map((t) => t.id));
+    const hasNewTrades = initialTrades.some((t) => !currentIds.has(t.id));
+
+    if (!hasNewTrades) return;
+
     if (statusFilter === "ALL" && !dateFrom && !dateTo) {
       setTrades(initialTrades);
       setHasMore(initialHasMore);
       setStats(initialStats);
     } else {
       startTransition(async () => {
-        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
         setTrades(result.trades);
         setHasMore(result.hasMore);
         setStats(result.stats);
@@ -203,14 +226,15 @@ export function TradesList({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLoadingMore = useRef(false);
 
-  const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || dateFrom || dateTo;
-  const prevFiltersRef = useRef({ statusFilter, resultFilter, pairFilter, dateFrom, dateTo });
+  const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || strategyFilter || dateFrom || dateTo;
+  const prevFiltersRef = useRef({ statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo });
 
-  const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, from: string, to: string) => {
+  const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, strategy: string, from: string, to: string) => {
     const result = await getTradesPaginated(accountId, {
       status: status === "ALL" ? undefined : status,
       result: resultF === "ALL" ? undefined : resultF,
       pair: pair || undefined,
+      strategyId: strategy || undefined,
       from: from || undefined,
       to: to || undefined,
       cursor,
@@ -279,20 +303,21 @@ export function TradesList({
       prev.statusFilter !== statusFilter ||
       prev.resultFilter !== resultFilter ||
       prev.pairFilter !== pairFilter ||
+      prev.strategyFilter !== strategyFilter ||
       prev.dateFrom !== dateFrom ||
       prev.dateTo !== dateTo;
 
-    prevFiltersRef.current = { statusFilter, resultFilter, pairFilter, dateFrom, dateTo };
+    prevFiltersRef.current = { statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo };
 
     if (!changed) return;
 
     startTransition(async () => {
-      const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+      const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
       setTrades(result.trades);
       setHasMore(result.hasMore);
       setStats(result.stats);
     });
-  }, [statusFilter, resultFilter, pairFilter, dateFrom, dateTo, fetchTrades]);
+  }, [statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo, fetchTrades]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -305,7 +330,7 @@ export function TradesList({
           isLoadingMore.current = true;
           startTransition(async () => {
             const lastId = trades[trades.length - 1]?.id;
-            const result = await fetchTrades(lastId, statusFilter, resultFilter, pairFilter, dateFrom, dateTo);
+            const result = await fetchTrades(lastId, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
             setTrades((prev) => [...prev, ...result.trades]);
             setHasMore(result.hasMore);
             isLoadingMore.current = false;
@@ -317,7 +342,7 @@ export function TradesList({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, dateFrom, dateTo, fetchTrades]);
+  }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo, fetchTrades]);
 
   const openTrades = useMemo(
     () => trades.filter((t) => t.status === "OPEN"),
@@ -399,6 +424,20 @@ export function TradesList({
           </select>
         )}
 
+        {/* Strategy filter */}
+        {strategies.length > 0 && (
+          <select
+            value={strategyFilter}
+            onChange={(e) => setStrategyFilter(e.target.value)}
+            className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] cursor-pointer"
+          >
+            <option value="">Todas las estrategias</option>
+            {strategies.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        )}
+
         {/* Separator */}
         <div className="hidden md:block w-px h-6 bg-[#252833]" />
 
@@ -444,6 +483,7 @@ export function TradesList({
               setStatusFilter("ALL");
               setResultFilter("ALL");
               setPairFilter("");
+              setStrategyFilter("");
               setDateFrom("");
               setDateTo("");
             }}
@@ -500,6 +540,7 @@ export function TradesList({
               strategies={strategies}
               onTradeUpdated={handleTradeUpdated}
               onTradeDeleted={handleTradeDeleted}
+              onTradeRestored={handleTradeRestored}
               onPositionClosed={handlePositionClosed}
             />
           ))}

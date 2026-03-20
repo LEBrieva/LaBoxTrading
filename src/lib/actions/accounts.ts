@@ -95,6 +95,61 @@ export async function setActiveAccount(accountId: string) {
   revalidatePath("/");
 }
 
+export async function getRiskRules(accountId: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+    select: { riskRules: true },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+  return (account.riskRules as { dailyLossLimit?: number; maxRiskPct?: number } | null) ?? {};
+}
+
+export async function updateRiskRules(
+  accountId: string,
+  rules: { dailyLossLimit?: number | null; maxRiskPct?: number | null }
+) {
+  const user = await getUser();
+  checkRateLimit(user.id, "updateRiskRules", 20, 60_000);
+
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+    select: { id: true },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  await prisma.account.update({
+    where: { id: accountId },
+    data: { riskRules: rules },
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
+export async function getDailyPnl(accountId: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+    select: { id: true },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [result] = await prisma.$queryRaw<{ pnl: number }[]>`
+    SELECT COALESCE(SUM(p.pnl), 0)::float AS pnl
+    FROM trades t
+    LEFT JOIN positions p ON p.trade_id = t.id
+    WHERE t.account_id = ${accountId}
+      AND t.status = 'CLOSED'
+      AND t.closed_at >= ${today}
+  `;
+
+  return result?.pnl ?? 0;
+}
+
 export async function deleteAccount(id: string) {
   const user = await getUser();
   checkRateLimit(user.id, "deleteAccount", 5, 60_000);

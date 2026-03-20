@@ -102,7 +102,7 @@ function BreakdownChart({ data }: { data: BreakdownGroup[] }) {
   const chartHeight = Math.max(200, data.length * 44);
 
   return (
-    <ResponsiveContainer width="100%" height={chartHeight}>
+    <div className="s"><ResponsiveContainer width="100%" height={chartHeight}>
       <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#252833" horizontal={false} />
         <XAxis type="number" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} fontFamily="var(--font-mono)" />
@@ -114,7 +114,7 @@ function BreakdownChart({ data }: { data: BreakdownGroup[] }) {
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainer></div>
   );
 }
 
@@ -138,10 +138,10 @@ function BreakdownTable({ data }: { data: BreakdownGroup[] }) {
               <td className="py-3 font-mono text-[#d4d4d8]">{row.name}</td>
               <td className="py-3 text-right font-mono text-[#d4d4d8]">{row.trades}</td>
               <td className="py-3 text-right font-mono text-[#5eead4]">{row.winRate}%</td>
-              <td className={`py-3 text-right font-mono font-bold ${row.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+              <td className={`py-3 text-right font-mono font-bold s ${row.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                 {formatPnl(row.totalPnl)}
               </td>
-              <td className={`py-3 text-right font-mono ${row.avgPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+              <td className={`py-3 text-right font-mono s ${row.avgPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                 {formatPnl(row.avgPnl)}
               </td>
             </tr>

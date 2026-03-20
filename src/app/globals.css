@@ -198,4 +198,15 @@
   .text-loss {
     color: #f87171;
   }
+
+  /* ==========================================
+     PRIVACY MODE — blur sensitive values
+     ========================================== */
+  [data-privacy="on"] .s {
+    display: inline-block;
+    filter: blur(8px);
+    user-select: none;
+    pointer-events: none;
+    transition: filter 0.2s ease;
+  }
 }

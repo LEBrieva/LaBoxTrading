@@ -149,7 +149,7 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
             </h2>
             <RangeToggle value={equityRange} onChange={setEquityRange} />
           </div>
-          <div className="p-3 md:p-4">
+          <div className="p-3 md:p-4 s">
             {filteredEquity.length <= 1 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-2">
                 <span className="text-2xl text-[#252833]">◈</span>
@@ -171,7 +171,7 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
             </h2>
             <RangeToggle value={pnlRange} onChange={setPnlRange} />
           </div>
-          <div className="p-3 md:p-4">
+          <div className="p-3 md:p-4 s">
             {filteredPnl.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-2">
                 <span className="text-2xl text-[#252833]">◈</span>
@@ -237,11 +237,11 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
                         <td className="py-3 text-right font-mono text-[#4ade80]">{row.wins}</td>
                         <td className="py-3 text-right font-mono text-[#f87171]">{row.losses}</td>
                         <td className="py-3 text-right font-mono text-[#5eead4]">{wr}%</td>
-                        <td className={`py-3 text-right font-mono font-bold ${row.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                        <td className={`py-3 text-right font-mono font-bold s ${row.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                           {formatPnl(row.pnl)}
                         </td>
-                        <td className="py-3 text-right font-mono text-[#4ade80]">{formatPnl(row.best)}</td>
-                        <td className="py-3 text-right font-mono text-[#f87171]">{formatPnl(row.worst)}</td>
+                        <td className="py-3 text-right font-mono text-[#4ade80] s">{formatPnl(row.best)}</td>
+                        <td className="py-3 text-right font-mono text-[#f87171] s">{formatPnl(row.worst)}</td>
                       </tr>
                     );
                   })}

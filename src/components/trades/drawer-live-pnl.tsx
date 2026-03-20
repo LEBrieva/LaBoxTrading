@@ -31,7 +31,7 @@ export function DrawerLivePnl({
       <div>
         <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">P&L Unrealized</div>
         <div
-          className="font-mono text-3xl font-bold"
+          className="font-mono text-3xl font-bold s"
           style={{ color: unrealizedPnl >= 0 ? "#4ade80" : "#f87171" }}
         >
           {formatPnl(unrealizedPnl)}
@@ -40,13 +40,13 @@ export function DrawerLivePnl({
       <div className="flex justify-center gap-4">
         <div>
           <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Bid</div>
-          <div className="font-mono text-sm text-[#5eead4]">
+          <div className="font-mono text-sm text-[#5eead4] s">
             {priceData ? priceData.bid.toFixed(dec) : "—"}
           </div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] font-mono">Ask</div>
-          <div className="font-mono text-sm text-[#5eead4]">
+          <div className="font-mono text-sm text-[#5eead4] s">
             {priceData ? priceData.ask.toFixed(dec) : "—"}
           </div>
         </div>

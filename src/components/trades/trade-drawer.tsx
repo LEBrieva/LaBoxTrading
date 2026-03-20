@@ -75,6 +75,7 @@ export function TradeDrawer({
   strategies = [],
   onTradeUpdated,
   onTradeDeleted,
+  onTradeRestored,
   onPositionClosed,
 }: {
   trade: Trade;
@@ -83,6 +84,7 @@ export function TradeDrawer({
   strategies?: { id: string; name: string; fields: unknown }[];
   onTradeUpdated?: (tradeId: string, updates: Partial<Trade>) => void;
   onTradeDeleted?: (tradeId: string) => void;
+  onTradeRestored?: (trade: Trade) => void;
   onPositionClosed?: (
     tradeId: string,
     positionId: string,
@@ -445,7 +447,7 @@ export function TradeDrawer({
                         )}
                       </div>
                       <span
-                        className="font-mono text-sm font-black shrink-0"
+                        className="font-mono text-sm font-black shrink-0 s"
                         style={{ color: p.pnl > 0 ? "#4ade80" : p.pnl < 0 ? "#f87171" : "#71717a" }}
                       >
                         {p.pnl >= 0 ? "+" : ""}{formatCurrency(p.pnl)}
@@ -457,7 +459,7 @@ export function TradeDrawer({
               <div className="flex items-center justify-between px-4 py-3 border-t border-[#252833]">
                 <span className="text-[10px] uppercase tracking-[2px] text-[#71717a] font-semibold">Total</span>
                 <span
-                  className="font-mono text-base font-black"
+                  className="font-mono text-base font-black s"
                   style={{
                     color: (() => {
                       const total = trade.positions.filter((p) => p.status !== "OPEN").reduce((s, p) => s + p.pnl, 0);
@@ -478,6 +480,11 @@ export function TradeDrawer({
                 tradeId={trade.id}
                 checklist={fullChecklist || null}
                 strategies={strategies}
+                onChecklistChanged={(cl) => {
+                  onTradeUpdated?.(trade.id, {
+                    checklist: cl ? { id: trade.checklist?.id ?? "", strategyId: cl.strategyId, strategy: cl.strategy } : undefined,
+                  });
+                }}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-12 gap-3 animate-pulse">
@@ -500,7 +507,7 @@ export function TradeDrawer({
                   <div className="text-[10px] uppercase tracking-[1.5px] text-[#52525b] mb-1 font-mono">
                     P&L Total
                   </div>
-                  <div className="font-mono text-3xl font-bold" style={{ color: pnlColor }}>
+                  <div className="font-mono text-3xl font-bold s" style={{ color: pnlColor }}>
                     {formatPnl(totalPnl)}
                   </div>
                 </div>
@@ -544,7 +551,7 @@ export function TradeDrawer({
                   <InfoCell label="TP" value={trade.takeProfit?.toFixed(dec) ?? "\u2014"} color="#4ade80" />
                 )}
 
-                <InfoCell label="Riesgo" value={`${formatCurrency(trade.riskUsd)} (${trade.riskPct.toFixed(1)}%)`} color="#f87171" />
+                <InfoCell label="Riesgo" value={`${formatCurrency(trade.riskUsd)} (${trade.riskPct.toFixed(1)}%)`} color="#f87171" sensitive />
                 <InfoCell label="Tamaño" value={trade.size?.toString() ?? "\u2014"} />
 
                 {editing ? (
@@ -654,7 +661,8 @@ export function TradeDrawer({
                               refreshStats();
                             } catch (err) {
                               console.error(err);
-                              alert("Error al eliminar. Recargá la página si es necesario.");
+                              onTradeRestored?.(trade);
+                              alert("Error al eliminar. El trade fue restaurado.");
                             }
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#f87171] text-[#08090c] text-[11px] font-bold hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
@@ -792,16 +800,18 @@ function InfoCell({
   label,
   value,
   color,
+  sensitive,
 }: {
   label: string;
   value: string;
   color?: string;
+  sensitive?: boolean;
 }) {
   return (
     <div className="bg-[#0e1015] border border-[#252833] rounded-lg px-3 py-2">
       <div className="text-[9px] uppercase tracking-[1px] text-[#52525b] mb-0.5 font-mono">{label}</div>
       <div
-        className="font-mono text-sm"
+        className={`font-mono text-sm${sensitive ? " s" : ""}`}
         style={color ? { color } : { color: "#d4d4d8" }}
       >
         {value}

@@ -96,11 +96,11 @@ export function AccountCard({
             <div className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1">
               Capital Actual
             </div>
-            <div className="font-mono text-2xl font-bold text-[#d4d4d8]">
+            <div className="font-mono text-2xl font-bold text-[#d4d4d8] s">
               {formatCurrency(account.currentCapital, account.currency)}
             </div>
             <div
-              className={`font-mono text-[12px] mt-1 ${
+              className={`font-mono text-[12px] mt-1 s ${
                 pnlIsPositive ? "text-[#4ade80]" : "text-[#f87171]"
               }`}
             >
@@ -110,8 +110,8 @@ export function AccountCard({
 
           {/* Inicio / Objetivo */}
           <div className="flex justify-between text-[10px] text-[#71717a] font-mono">
-            <span>Inicio: {formatCurrency(account.initialCapital)}</span>
-            <span>Objetivo: {formatCurrency(account.targetCapital)}</span>
+            <span>Inicio: <span className="s">{formatCurrency(account.initialCapital)}</span></span>
+            <span>Objetivo: <span className="s">{formatCurrency(account.targetCapital)}</span></span>
           </div>
 
           {/* Progress bar */}

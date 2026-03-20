@@ -124,6 +124,7 @@ export async function getTradesPaginated(accountId: string, filters?: {
   status?: "OPEN" | "CLOSED";
   result?: "TP" | "SL" | "BE";
   pair?: string;
+  strategyId?: string;
   from?: string;
   to?: string;
   cursor?: string;
@@ -141,6 +142,9 @@ export async function getTradesPaginated(accountId: string, filters?: {
       positions: { some: { status: filters.result } },
     }),
     ...(filters?.pair && { pair: filters.pair }),
+    ...(filters?.strategyId && {
+      checklist: { strategyId: filters.strategyId },
+    }),
     ...(filters?.from && { openedAt: { gte: new Date(filters.from) } }),
     ...(filters?.to && {
       openedAt: {
@@ -245,9 +249,6 @@ export async function updateTrade(id: string, raw: {
       ...(openedAt !== undefined && { openedAt: new Date(openedAt) }),
     },
   });
-  revalidatePath("/");
-  revalidatePath("/trades");
-  revalidatePath(`/trades/${id}`);
   return trade;
 }
 
@@ -257,9 +258,6 @@ export async function deleteTrade(id: string) {
   await getTrade(id);
 
   await prisma.trade.delete({ where: { id } });
-
-  revalidatePath("/");
-  revalidatePath("/trades");
 }
 
 export async function closePosition(
@@ -355,8 +353,4 @@ export async function closePosition(
       },
     });
   }
-
-  revalidatePath("/");
-  revalidatePath("/trades");
-  revalidatePath(`/trades/${position.tradeId}`);
 }

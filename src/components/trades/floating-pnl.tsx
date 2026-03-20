@@ -28,7 +28,7 @@ export function FloatingPnl({ openTrades }: { openTrades: Trade[] }) {
 
   return (
     <span className={`ml-auto ${floatingPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-      Flotante: {sign}${Math.abs(floatingPnl).toFixed(2)}
+      Flotante: <span className="s">{sign}${Math.abs(floatingPnl).toFixed(2)}</span>
     </span>
   );
 }

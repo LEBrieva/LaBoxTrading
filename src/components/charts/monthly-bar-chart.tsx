@@ -40,7 +40,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export function MonthlyBarChart({ data }: MonthlyBarChartProps) {
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <div className="s"><ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#252833" vertical={false} />
         <XAxis
@@ -72,6 +72,6 @@ export function MonthlyBarChart({ data }: MonthlyBarChartProps) {
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainer></div>
   );
 }

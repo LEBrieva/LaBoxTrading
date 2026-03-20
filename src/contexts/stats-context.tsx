@@ -88,6 +88,20 @@ export function StatsProvider({
     refreshStats();
   }, [refreshStats]);
 
+  // Re-fetch when server-side fallback changes (e.g. after deposit/withdrawal)
+  const prevFallbackRef = useRef(fallback);
+  useEffect(() => {
+    const prev = prevFallbackRef.current;
+    if (
+      prev.currentCapital !== fallback.currentCapital ||
+      prev.initialCapital !== fallback.initialCapital ||
+      prev.targetCapital !== fallback.targetCapital
+    ) {
+      prevFallbackRef.current = fallback;
+      refreshStats();
+    }
+  }, [fallback, refreshStats]);
+
   return (
     <StatsContext.Provider value={{ stats, loading, refreshStats }}>
       {children}

@@ -7,6 +7,7 @@ import { signOut } from "@/lib/actions/auth";
 const navItems = [
   { title: "Dashboard", href: "/" },
   { title: "Trades", href: "/trades" },
+  { title: "Movimientos", href: "/movimientos" },
   { title: "Calendario", href: "/calendar" },
   { title: "Cuentas", href: "/accounts" },
   { title: "Estrategias", href: "/strategies" },

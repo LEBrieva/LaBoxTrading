@@ -1,8 +1,16 @@
+import { cookies } from "next/headers";
 import { getUser } from "@/lib/actions/auth";
+import { getAccounts, getRiskRules } from "@/lib/actions/accounts";
 import { DonationSection } from "@/components/settings/donation-section";
+import { RiskRulesSection } from "@/components/settings/risk-rules-section";
 
 export default async function SettingsPage() {
   const user = await getUser();
+  const accounts = await getAccounts();
+  const cookieStore = await cookies();
+  const activeAccountId = cookieStore.get("activeAccountId")?.value || accounts[0]?.id;
+  const activeAccount = accounts.find((a) => a.id === activeAccountId);
+  const riskRules = activeAccountId ? await getRiskRules(activeAccountId) : {};
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -51,6 +59,14 @@ export default async function SettingsPage() {
 
         <DonationSection />
       </div>
+
+      {activeAccountId && activeAccount && (
+        <RiskRulesSection
+          accountId={activeAccountId}
+          accountName={activeAccount.name}
+          initialRules={riskRules}
+        />
+      )}
     </div>
   );
 }
