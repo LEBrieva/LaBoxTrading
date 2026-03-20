@@ -2,14 +2,15 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { getAccounts } from "@/lib/actions/accounts";
-import { getEquityData, getDailyStats } from "@/lib/actions/stats";
+import { getEquityData, getDailyStats, getBreakdownStats } from "@/lib/actions/stats";
 import { DashboardCharts } from "@/components/charts/dashboard-charts";
 import { DashboardStatsBar } from "@/components/dashboard/dashboard-stats-bar";
 
 async function DashboardChartsSection({ accountId, initialCapital }: { accountId: string; initialCapital: number }) {
-  const [equityData, dailyData] = await Promise.all([
+  const [equityData, dailyData, breakdownTrades] = await Promise.all([
     getEquityData(accountId),
     getDailyStats(accountId),
+    getBreakdownStats(accountId),
   ]);
 
   const dailyArray = Object.entries(dailyData)
@@ -21,6 +22,7 @@ async function DashboardChartsSection({ accountId, initialCapital }: { accountId
       equityData={equityData}
       initialCapital={initialCapital}
       dailyData={dailyArray}
+      breakdownTrades={breakdownTrades}
     />
   );
 }

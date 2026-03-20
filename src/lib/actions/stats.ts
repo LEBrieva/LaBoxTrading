@@ -261,6 +261,43 @@ export async function getWeeklyMonthlyStats(accountId: string) {
   return monthly;
 }
 
+export interface BreakdownTrade {
+  pair: string;
+  strategy: string;
+  pnl: number;
+  closedAt: string;
+}
+
+export async function getBreakdownStats(accountId: string): Promise<BreakdownTrade[]> {
+  await verifyAccountOwnership(accountId);
+
+  const rows = await prisma.$queryRaw<
+    { pair: string; strategy: string; pnl: number; closed_at: Date }[]
+  >`
+    SELECT
+      t.pair,
+      COALESCE(s.name, 'Sin estrategia') AS strategy,
+      COALESCE(SUM(p.pnl), 0)::float AS pnl,
+      t.closed_at
+    FROM trades t
+    LEFT JOIN positions p ON p.trade_id = t.id
+    LEFT JOIN trade_checklists tc ON tc.trade_id = t.id
+    LEFT JOIN strategies s ON s.id = tc.strategy_id
+    WHERE t.account_id = ${accountId}
+      AND t.status = 'CLOSED'
+      AND t.closed_at IS NOT NULL
+    GROUP BY t.id, t.pair, s.name, t.closed_at
+    ORDER BY t.closed_at ASC
+  `;
+
+  return rows.map((r) => ({
+    pair: r.pair,
+    strategy: r.strategy,
+    pnl: Math.round(r.pnl * 100) / 100,
+    closedAt: r.closed_at.toISOString().split("T")[0],
+  }));
+}
+
 export async function getWeeklyStats(accountId: string) {
   await verifyAccountOwnership(accountId);
 

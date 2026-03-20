@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { EquityCurve } from "./equity-curve";
+import { BreakdownSection } from "./breakdown-section";
 import { formatPnl } from "@/lib/calculations";
+import type { BreakdownTrade } from "@/lib/actions/stats";
 import {
   BarChart,
   Bar,
@@ -38,6 +40,7 @@ interface DashboardChartsProps {
   equityData: EquityPoint[];
   initialCapital: number;
   dailyData: DailyData[];
+  breakdownTrades: BreakdownTrade[];
 }
 
 function filterByRange<T extends { date: string }>(data: T[], range: TimeRange): T[] {
@@ -97,7 +100,7 @@ function formatDateLabel(date: string): string {
   return `${d}/${m}`;
 }
 
-export function DashboardCharts({ equityData, initialCapital, dailyData }: DashboardChartsProps) {
+export function DashboardCharts({ equityData, initialCapital, dailyData, breakdownTrades }: DashboardChartsProps) {
   const [equityRange, setEquityRange] = useState<TimeRange>("30d");
   const [pnlRange, setPnlRange] = useState<TimeRange>("30d");
   const [tableRange, setTableRange] = useState<TimeRange>("30d");
@@ -248,6 +251,9 @@ export function DashboardCharts({ equityData, initialCapital, dailyData }: Dashb
           )}
         </div>
       </div>
+
+      {/* Breakdown Section */}
+      <BreakdownSection trades={breakdownTrades} />
     </div>
   );
 }
