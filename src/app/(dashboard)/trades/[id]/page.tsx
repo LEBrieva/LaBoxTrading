@@ -163,6 +163,7 @@ export default async function TradeDetailPage({
                       positionId={pos.id}
                       positionLabel={pos.label}
                       riskUsd={trade.riskUsd}
+                      trade={trade}
                     />
                   )}
                 </div>

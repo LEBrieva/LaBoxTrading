@@ -62,7 +62,7 @@ interface ClosePositionDialogProps {
     },
     tradeUpdates?: Partial<Trade>
   ) => void;
-  trade?: Trade;
+  trade?: Partial<Trade> & Pick<Trade, "id" | "direction" | "riskUsd" | "positions">;
 }
 
 export function ClosePositionDialog({
@@ -78,25 +78,99 @@ export function ClosePositionDialog({
   const [pnl, setPnl] = useState("");
   const [exitPrice, setExitPrice] = useState("");
   const [partialPct, setPartialPct] = useState("50");
+  const [partialSize, setPartialSize] = useState("");
   const [closedAt, setClosedAt] = useState("");
   const [loading, setLoading] = useState(false);
   const { refreshStats } = useStats();
+
+  const canCalcPnl = trade && trade.entry != null && trade.size != null;
+
+  function calcPnl(price: number, pctOverride?: number): string {
+    if (!trade || trade.entry == null || trade.size == null) return "";
+    const size = pctOverride != null ? trade.size * (pctOverride / 100) : trade.size;
+    const diff = trade.direction === "LONG" ? price - trade.entry : trade.entry - price;
+    return (diff * size).toFixed(2);
+  }
 
   // Pre-fill exit price with live price when dialog opens
   useEffect(() => {
     if (open && livePrice != null && exitPrice === "") {
       setExitPrice(livePrice.toString());
+      if (canCalcPnl) {
+        setPnl(calcPnl(livePrice));
+      }
     }
-  }, [open, livePrice, exitPrice]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Initialize partial size from trade size
+  useEffect(() => {
+    if (open && trade?.size != null && partialSize === "") {
+      setPartialSize((trade.size * 0.5).toString());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function handleResultChange(val: "TP" | "SL" | "BE" | "PARTIAL") {
     setResult(val);
-    if (val === "SL") {
-      setPnl((-riskUsd).toFixed(2));
-    } else if (val === "BE") {
-      setPnl("0");
+    let newPrice = "";
+    if (val === "TP" && trade?.takeProfit != null) {
+      newPrice = trade.takeProfit.toString();
+    } else if (val === "SL" && trade?.stopLoss != null) {
+      newPrice = trade.stopLoss.toString();
+    } else if (val === "BE" && trade?.entry != null) {
+      newPrice = trade.entry.toString();
+    }
+    if (newPrice) {
+      setExitPrice(newPrice);
+      if (canCalcPnl) {
+        const pct = val === "PARTIAL" ? parseFloat(partialPct) : undefined;
+        setPnl(calcPnl(parseFloat(newPrice), pct));
+      } else if (val === "SL") {
+        setPnl((-riskUsd).toFixed(2));
+      } else if (val === "BE") {
+        setPnl("0");
+      }
     } else {
-      setPnl("");
+      if (val === "SL") {
+        setPnl((-riskUsd).toFixed(2));
+      } else if (val === "BE") {
+        setPnl("0");
+      } else {
+        setPnl("");
+      }
+      setExitPrice("");
+    }
+  }
+
+  function handleExitPriceChange(val: string) {
+    setExitPrice(val);
+    if (val && canCalcPnl) {
+      const pct = result === "PARTIAL" ? parseFloat(partialPct) : undefined;
+      setPnl(calcPnl(parseFloat(val), pct));
+    }
+  }
+
+  function handlePartialPctChange(val: string) {
+    setPartialPct(val);
+    if (trade?.size != null && val) {
+      const pct = parseFloat(val);
+      setPartialSize((trade.size * (pct / 100)).toString());
+    }
+    if (exitPrice && canCalcPnl && val) {
+      setPnl(calcPnl(parseFloat(exitPrice), parseFloat(val)));
+    }
+  }
+
+  function handlePartialSizeChange(val: string) {
+    setPartialSize(val);
+    if (trade?.size != null && val && trade.size > 0) {
+      const sz = parseFloat(val);
+      const pct = Math.round((sz / trade.size) * 100);
+      setPartialPct(String(Math.min(99, Math.max(1, pct))));
+      if (exitPrice && canCalcPnl) {
+        setPnl(calcPnl(parseFloat(exitPrice), Math.min(99, Math.max(1, pct))));
+      }
     }
   }
 
@@ -114,6 +188,7 @@ export function ClosePositionDialog({
       );
       setOpen(false);
       setExitPrice("");
+      setPartialSize("");
 
       // Build trade-level updates for partial closes (size reduction)
       let tradeUpdates: Partial<Trade> | undefined;
@@ -209,10 +284,44 @@ export function ClosePositionDialog({
                   type="number"
                   step="any"
                   value={exitPrice}
-                  onChange={(e) => setExitPrice(e.target.value)}
+                  onChange={(e) => handleExitPriceChange(e.target.value)}
                   placeholder="Precio al cerrar"
                 />
               </div>
+
+              {result === "PARTIAL" && (
+                <div className="space-y-1.5">
+                  <label className={labelClass}>Cierre parcial</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <span className="text-[9px] text-[#52525b] font-mono">Tamaño a cerrar</span>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={partialSize}
+                        onChange={(e) => handlePartialSizeChange(e.target.value)}
+                        placeholder={trade?.size != null ? `de ${trade.size}` : "Tamaño"}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[9px] text-[#52525b] font-mono">% de la posición</span>
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="99"
+                        value={partialPct}
+                        onChange={(e) => handlePartialPctChange(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className={labelClass}>P&L (USD)</label>
@@ -224,25 +333,11 @@ export function ClosePositionDialog({
                   onChange={(e) => setPnl(e.target.value)}
                   required
                   placeholder={result === "TP" ? "Monto ganado" : "0.00"}
-                  autoFocus
                 />
+                {canCalcPnl && pnl && (
+                  <p className="text-[9px] text-[#52525b] font-mono">Calculado automáticamente. Podés editarlo.</p>
+                )}
               </div>
-
-              {result === "PARTIAL" && (
-                <div className="space-y-1.5">
-                  <label className={labelClass}>% del tramo cerrado</label>
-                  <input
-                    className={inputClass}
-                    type="number"
-                    step="1"
-                    min="1"
-                    max="99"
-                    value={partialPct}
-                    onChange={(e) => setPartialPct(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
 
               <div className="space-y-1.5">
                 <label className={labelClass}>Fecha de cierre (opcional)</label>
