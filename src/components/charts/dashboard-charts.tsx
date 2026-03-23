@@ -34,6 +34,8 @@ interface EquityPoint {
   capital: number;
   pnl: number;
   trades?: number;
+  deposit?: number;
+  withdrawal?: number;
 }
 
 interface DashboardChartsProps {

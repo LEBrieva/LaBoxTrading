@@ -11,14 +11,23 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface DataPoint {
+  date: string;
+  capital: number;
+  pnl: number;
+  trades?: number;
+  deposit?: number;
+  withdrawal?: number;
+}
+
 interface EquityCurveProps {
-  data: { date: string; capital: number; pnl: number; trades?: number }[];
+  data: DataPoint[];
   initialCapital: number;
 }
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; payload: { pnl: number; capital: number; trades?: number } }[]; label?: string }) {
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; payload: DataPoint }[]; label?: string }) {
   if (!active || !payload?.length) return null;
-  const { capital, pnl, trades } = payload[0].payload;
+  const { capital, pnl, trades, deposit, withdrawal } = payload[0].payload;
   const sign = pnl >= 0 ? "+" : "";
 
   return (
@@ -36,7 +45,65 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
           {trades ? ` (${trades} trade${trades > 1 ? "s" : ""})` : ""}
         </p>
       )}
+      {!!deposit && deposit > 0 && (
+        <p className="text-[11px] font-mono font-semibold text-[#60a5fa]">
+          +${deposit.toFixed(2)} deposito
+        </p>
+      )}
+      {!!withdrawal && withdrawal > 0 && (
+        <p className="text-[11px] font-mono font-semibold text-[#fbbf24]">
+          -${withdrawal.toFixed(2)} retiro
+        </p>
+      )}
     </div>
+  );
+}
+
+function CustomDot(props: { cx?: number; cy?: number; payload?: DataPoint; r?: number; fill?: string; strokeWidth?: number }) {
+  const { cx, cy, payload } = props;
+  if (!cx || !cy || !payload) return null;
+
+  const hasDeposit = !!payload.deposit && payload.deposit > 0;
+  const hasWithdrawal = !!payload.withdrawal && payload.withdrawal > 0;
+
+  if (!hasDeposit && !hasWithdrawal) return null;
+
+  // Triangle marker: up for deposit, down for withdrawal
+  const size = 6;
+  if (hasDeposit && hasWithdrawal) {
+    // Both: diamond shape
+    return (
+      <g>
+        <polygon
+          points={`${cx},${cy - size - 4} ${cx + size},${cy - 4} ${cx},${cy + size - 4} ${cx - size},${cy - 4}`}
+          fill="#60a5fa"
+          stroke="#0e1015"
+          strokeWidth={1}
+        />
+      </g>
+    );
+  }
+
+  if (hasDeposit) {
+    // Up triangle
+    return (
+      <polygon
+        points={`${cx},${cy - size - 4} ${cx + size},${cy + size - 4} ${cx - size},${cy + size - 4}`}
+        fill="#60a5fa"
+        stroke="#0e1015"
+        strokeWidth={1}
+      />
+    );
+  }
+
+  // Down triangle
+  return (
+    <polygon
+      points={`${cx - size},${cy - size - 4} ${cx + size},${cy - size - 4} ${cx},${cy + size - 4}`}
+      fill="#fbbf24"
+      stroke="#0e1015"
+      strokeWidth={1}
+    />
   );
 }
 
@@ -104,6 +171,17 @@ export function EquityCurve({ data, initialCapital }: EquityCurveProps) {
           fill={isAbove ? "url(#equityGradientGreen)" : "url(#equityGradientRed)"}
           dot={data.length <= 30 ? { r: 3, fill: isAbove ? "#4ade80" : "#f87171", strokeWidth: 0 } : false}
           activeDot={{ r: 5, fill: isAbove ? "#4ade80" : "#f87171", strokeWidth: 0 }}
+        />
+        {/* Transaction markers layer */}
+        <Area
+          type="monotone"
+          dataKey="capital"
+          stroke="none"
+          fill="none"
+          dot={<CustomDot />}
+          activeDot={false}
+          legendType="none"
+          tooltipType="none"
         />
       </AreaChart>
     </ResponsiveContainer>

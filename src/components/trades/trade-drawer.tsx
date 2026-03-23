@@ -100,7 +100,7 @@ export function TradeDrawer({
 }) {
   const { refreshStats } = useStats();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-  const openPositions = trade.positions.filter((p) => p.status === "OPEN");
+  const openPositions = trade.positions.filter((p) => p.status === "OPEN" || p.status === "PARTIAL");
   const isLong = trade.direction === "LONG";
   const firstClosed = trade.positions[0]?.status;
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
@@ -618,8 +618,8 @@ export function TradeDrawer({
 
               {/* Close trade */}
               {!editing && (() => {
-                const pos = trade.positions[0];
-                if (!pos || pos.status !== "OPEN") return null;
+                const pos = trade.positions.find((p) => p.status === "OPEN" || p.status === "PARTIAL");
+                if (!pos) return null;
                 return (
                   <div className="pt-3 border-t border-[#252833]">
                     <LiveCloseButton

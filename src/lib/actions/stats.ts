@@ -115,7 +115,7 @@ export async function getAccountStats(accountId: string) {
 export async function getEquityData(accountId: string) {
   const account = await verifyAccountOwnership(accountId);
 
-  const rows = await prisma.$queryRaw<
+  const tradeRows = await prisma.$queryRaw<
     { day: string; pnl: number; trades: bigint }[]
   >`
     SELECT
@@ -131,19 +131,64 @@ export async function getEquityData(accountId: string) {
     ORDER BY day ASC
   `;
 
+  const txRows = await prisma.$queryRaw<
+    { day: string; deposits: number; withdrawals: number }[]
+  >`
+    SELECT
+      TO_CHAR(date, 'YYYY-MM-DD') AS day,
+      COALESCE(SUM(CASE WHEN type = 'DEPOSIT' THEN amount ELSE 0 END), 0)::float AS deposits,
+      COALESCE(SUM(CASE WHEN type = 'WITHDRAWAL' THEN amount ELSE 0 END), 0)::float AS withdrawals
+    FROM transactions
+    WHERE account_id = ${accountId}
+    GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
+    ORDER BY day ASC
+  `;
+
+  // Merge trades and transactions by day
+  const dayMap = new Map<string, { pnl: number; trades: number; deposit: number; withdrawal: number }>();
+
+  for (const row of tradeRows) {
+    dayMap.set(row.day, {
+      pnl: row.pnl,
+      trades: Number(row.trades),
+      deposit: 0,
+      withdrawal: 0,
+    });
+  }
+
+  for (const row of txRows) {
+    const existing = dayMap.get(row.day);
+    if (existing) {
+      existing.deposit = row.deposits;
+      existing.withdrawal = row.withdrawals;
+    } else {
+      dayMap.set(row.day, {
+        pnl: 0,
+        trades: 0,
+        deposit: row.deposits,
+        withdrawal: row.withdrawals,
+      });
+    }
+  }
+
+  const sortedDays = [...dayMap.keys()].sort();
+
   let runningCapital = account.initialCapital;
-  const startDate = rows[0]?.day ?? account.createdAt.toISOString().split("T")[0];
-  const dataPoints: { date: string; capital: number; pnl: number; trades: number }[] = [
-    { date: startDate, capital: runningCapital, pnl: 0, trades: 0 },
+  const startDate = sortedDays[0] ?? account.createdAt.toISOString().split("T")[0];
+  const dataPoints: { date: string; capital: number; pnl: number; trades: number; deposit: number; withdrawal: number }[] = [
+    { date: startDate, capital: runningCapital, pnl: 0, trades: 0, deposit: 0, withdrawal: 0 },
   ];
 
-  for (const row of rows) {
-    runningCapital += row.pnl;
+  for (const day of sortedDays) {
+    const d = dayMap.get(day)!;
+    runningCapital += d.pnl + d.deposit - d.withdrawal;
     dataPoints.push({
-      date: row.day,
+      date: day,
       capital: Math.round(runningCapital * 100) / 100,
-      pnl: Math.round(row.pnl * 100) / 100,
-      trades: Number(row.trades),
+      pnl: Math.round(d.pnl * 100) / 100,
+      trades: d.trades,
+      deposit: Math.round(d.deposit * 100) / 100,
+      withdrawal: Math.round(d.withdrawal * 100) / 100,
     });
   }
 

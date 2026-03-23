@@ -193,7 +193,13 @@ export function TradesList({
           setStats((s) => ({ ...s, openCount: s.openCount - 1 }));
         }
 
-        return updated;
+        // Re-sort to match server order: OPEN first, then by openedAt desc
+        const statusOrder: Record<string, number> = { OPEN: 0, CLOSED: 1 };
+        return updated.sort((a, b) => {
+          const s = (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2);
+          if (s !== 0) return s;
+          return new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime();
+        });
       });
     },
     []

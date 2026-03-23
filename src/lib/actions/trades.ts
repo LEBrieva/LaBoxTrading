@@ -337,10 +337,11 @@ export async function closePosition(
   });
 
   // Check if all positions are closed -> close trade
+  // PARTIAL positions are still open (remaining size can be closed later)
   const openPositions = await prisma.position.count({
     where: {
       tradeId: position.tradeId,
-      status: "OPEN",
+      status: { in: ["OPEN", "PARTIAL"] },
     },
   });
 

@@ -316,7 +316,7 @@ export function TradeCard({
 
         {/* Live P&L or static result */}
         {(() => {
-          const openPos = positions.find((p) => p.status === "OPEN");
+          const openPos = positions.find((p) => p.status === "OPEN" || p.status === "PARTIAL");
           const totalPnl = positions.reduce((s, p) => s + p.pnl, 0);
           if (openPos) {
             return (
