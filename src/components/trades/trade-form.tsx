@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTrade } from "@/lib/actions/trades";
 import { addTradeImage } from "@/lib/actions/trade-images";
@@ -71,6 +71,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
   const fileInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
 
   const filteredSymbols = pair.length > 0
     ? symbols.filter((s) => s.name.toLowerCase().includes(pair.toLowerCase()))
@@ -174,10 +175,12 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
     // Check risk rules before submitting
     const hasRules = riskRules.dailyLossLimit || riskRules.maxRiskPct;
     if (hasRules && !showRiskConfirm) {
+      setLoading(true);
       const warnings = await checkRiskRules();
       if (warnings.length > 0) {
         setRiskWarnings(warnings);
         setShowRiskConfirm(true);
+        setLoading(false);
         return;
       }
     }
@@ -212,7 +215,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
       }
       setOpen(false);
       resetForm();
-      router.refresh();
+      startRefresh(() => router.refresh());
     } catch (err) {
       console.error(err);
       toast("Error al crear trade: " + (err instanceof Error ? err.message : String(err)), "error");
@@ -260,10 +263,19 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
         + Nuevo trade
       </button>
 
+      {refreshing && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-[#0e1015] border border-[#252833] rounded-xl px-6 py-4 flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-[#5eead4] border-t-transparent rounded-full animate-spin" />
+            <span className="text-[13px] text-[#d4d4d8] font-semibold">Cargando trades...</span>
+          </div>
+        </div>
+      )}
+
       {open && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+          onClick={() => {}}
         >
           <div className="bg-[#0e1015] border border-[#252833] rounded-xl w-[480px] max-w-[95vw] max-h-[95vh] md:max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95">
             {/* Header */}
@@ -545,14 +557,14 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                 <button
                   type="button"
                   onClick={() => { setOpen(false); setShowRiskConfirm(false); setShowSlWarning(false); setRiskWarnings([]); }}
-                  className="px-4 py-2 rounded-lg border border-[#252833] text-[#71717a] text-[13px] font-semibold hover:border-[#2f3340] hover:text-[#d4d4d8] transition-colors"
+                  className="px-4 py-2 rounded-lg border border-[#252833] text-[#71717a] text-[13px] font-semibold hover:border-[#2f3340] hover:text-[#d4d4d8] transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`px-5 py-2 rounded-lg text-[13px] font-bold hover:brightness-110 transition-all hover:-translate-y-[1px] disabled:opacity-50 ${
+                  className={`px-5 py-2 rounded-lg text-[13px] font-bold hover:brightness-110 transition-all hover:-translate-y-[1px] disabled:opacity-50 cursor-pointer ${
                     showSlWarning || showRiskConfirm
                       ? "bg-[#fbbf24] text-[#08090c]"
                       : "bg-[#5eead4] text-[#08090c]"

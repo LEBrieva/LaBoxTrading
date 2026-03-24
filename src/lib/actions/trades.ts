@@ -31,29 +31,37 @@ export async function createTrade(raw: {
   });
   if (!account) throw new Error("Cuenta no encontrada");
 
-  const trade = await prisma.trade.create({
-    data: {
-      accountId: data.accountId,
-      pair: data.pair.toUpperCase(),
-      direction: data.direction,
-      entry: data.entry || null,
-      stopLoss: data.stopLoss || null,
-      takeProfit: data.takeProfit || null,
-      size: data.size || null,
-      riskUsd: data.riskUsd ?? 0,
-      riskPct: data.riskPct ?? 0,
-      externalId: data.externalId || null,
-      notes: data.notes || null,
-      imageUrl: data.imageUrl || null,
-      ...(data.openedAt && { openedAt: new Date(data.openedAt) }),
-      positions: {
-        create: {
-          label: "Posicion 1",
+  let trade;
+  try {
+    trade = await prisma.trade.create({
+      data: {
+        accountId: data.accountId,
+        pair: data.pair.toUpperCase(),
+        direction: data.direction,
+        entry: data.entry || null,
+        stopLoss: data.stopLoss || null,
+        takeProfit: data.takeProfit || null,
+        size: data.size || null,
+        riskUsd: data.riskUsd ?? 0,
+        riskPct: data.riskPct ?? 0,
+        externalId: data.externalId || null,
+        notes: data.notes || null,
+        imageUrl: data.imageUrl || null,
+        ...(data.openedAt && { openedAt: new Date(data.openedAt) }),
+        positions: {
+          create: {
+            label: "Posicion 1",
+          },
         },
       },
-    },
-    include: { positions: true },
-  });
+      include: { positions: true },
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("Unique constraint")) {
+      throw new Error("Ya existe un trade con ese ID de broker");
+    }
+    throw err;
+  }
 
   revalidatePath("/");
   revalidatePath("/trades");

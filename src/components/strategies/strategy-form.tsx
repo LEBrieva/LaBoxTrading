@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStrategy, updateStrategy } from "@/lib/actions/strategies";
 import type { StrategyFieldDef, FieldType } from "@/lib/types/strategy";
@@ -43,6 +43,7 @@ export function StrategyForm({ strategy, onClose }: Props) {
       : [{ id: generateId(), label: "", type: "checkbox", order: 0 }]
   );
   const [loading, setLoading] = useState(false);
+  const [refreshing, startRefresh] = useTransition();
   const router = useRouter();
 
   function addField() {
@@ -86,8 +87,8 @@ export function StrategyForm({ strategy, onClose }: Props) {
       } else {
         await createStrategy({ name, description: description || undefined, fields: cleanFields });
       }
-      router.refresh();
       onClose();
+      startRefresh(() => router.refresh());
     } catch (err) {
       console.error(err);
     } finally {
@@ -96,6 +97,15 @@ export function StrategyForm({ strategy, onClose }: Props) {
   }
 
   return (
+    <>
+    {refreshing && (
+      <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-[#0e1015] border border-[#252833] rounded-xl px-6 py-4 flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-[#5eead4] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[13px] text-[#d4d4d8] font-semibold">Cargando...</span>
+        </div>
+      </div>
+    )}
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={() => {}}
@@ -258,5 +268,6 @@ export function StrategyForm({ strategy, onClose }: Props) {
         </form>
       </div>
     </div>
+    </>
   );
 }

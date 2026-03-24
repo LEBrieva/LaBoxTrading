@@ -7,13 +7,21 @@ import type { Broker } from "@/generated/prisma/client";
 import { getStrategies } from "@/lib/actions/strategies";
 import { TradesList } from "@/components/trades/trades-list";
 import { TradeForm } from "@/components/trades/trade-form";
+import { ImportCsvDialog } from "@/components/trades/import-csv-dialog";
 
 async function TradeFormSection({ accountId, broker }: { accountId: string; broker: Broker }) {
   const [symbols, riskRules] = await Promise.all([
     getSymbols(broker),
     getRiskRules(accountId),
   ]);
-  return <TradeForm accountId={accountId} symbols={symbols} riskRules={riskRules} />;
+  return (
+    <div className="flex items-center gap-2">
+      {broker === "SIMPLEFX" && (
+        <ImportCsvDialog accountId={accountId} />
+      )}
+      <TradeForm accountId={accountId} symbols={symbols} riskRules={riskRules} />
+    </div>
+  );
 }
 
 async function TradesListSection({

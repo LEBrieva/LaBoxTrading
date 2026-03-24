@@ -91,20 +91,22 @@ export function AccountFormDialog() {
               <div className="space-y-1.5">
                 <label className={labelClass}>Broker</label>
                 <div className="flex gap-2">
-                  {(["SIMPLEFX", "BITGET"] as const).map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      onClick={() => setBroker(b)}
-                      className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold font-mono tracking-wide transition-colors cursor-pointer ${
-                        broker === b
-                          ? "bg-[#5eead4]/10 border-[#5eead4]/30 text-[#5eead4]"
-                          : "border-[#252833] text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e]"
-                      }`}
-                    >
-                      {b}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 rounded-lg border text-[11px] font-bold font-mono tracking-wide bg-[#5eead4]/10 border-[#5eead4]/30 text-[#5eead4]"
+                  >
+                    SIMPLEFX
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="px-3 py-1.5 rounded-lg border text-[11px] font-bold font-mono tracking-wide border-[#252833] text-[#52525b] cursor-not-allowed relative"
+                  >
+                    BITGET
+                    <span className="absolute -top-2 -right-2 bg-[#5eead4]/20 text-[#5eead4] text-[7px] font-bold px-1.5 py-0.5 rounded-full tracking-wider">
+                      SOON
+                    </span>
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
