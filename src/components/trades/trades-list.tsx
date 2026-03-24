@@ -293,7 +293,12 @@ export function TradesList({
       XLSX.utils.book_append_sheet(wb, ws, "Trades");
 
       const today = new Date().toISOString().split("T")[0];
-      const safeName = accountName.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const safeName = accountName
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_|_$/g, "")
+        .slice(0, 50) || "export";
       XLSX.writeFile(wb, `Trades_${safeName}_${today}.xlsx`);
     } catch (err) {
       console.error("Export failed:", err);

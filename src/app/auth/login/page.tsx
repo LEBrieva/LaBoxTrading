@@ -36,7 +36,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-[#d4d4d8]">
-            LA CAJA
+            LA TRADING BOX
           </h1>
           <p className="font-mono text-[10px] text-[#5eead4] opacity-60 tracking-[3px] uppercase mt-1">
             Trading Tracker
@@ -86,7 +86,15 @@ export default function LoginPage() {
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
-          <p className="mt-4 text-center text-[11px] text-[#71717a] font-mono">
+          <p className="mt-3 text-center">
+            <Link
+              href="/auth/forgot-password"
+              className="text-[11px] text-[#52525b] hover:text-[#71717a] font-mono transition-colors"
+            >
+              Olvidaste tu contrasena?
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-[11px] text-[#71717a] font-mono">
             No tenes cuenta?{" "}
             <Link
               href="/auth/register"
