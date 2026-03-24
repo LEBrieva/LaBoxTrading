@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { closePosition } from "@/lib/actions/trades";
 import { useStats } from "@/contexts/stats-context";
+import { useToast } from "@/components/ui/toast";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -82,6 +83,7 @@ export function ClosePositionDialog({
   const [closedAt, setClosedAt] = useState("");
   const [loading, setLoading] = useState(false);
   const { refreshStats } = useStats();
+  const { show: toast } = useToast();
 
   const canCalcPnl = trade && trade.entry != null && trade.size != null;
 
@@ -216,7 +218,7 @@ export function ClosePositionDialog({
       refreshStats();
     } catch (err) {
       console.error("Error closing position:", err);
-      alert("Error al cerrar: " + (err instanceof Error ? err.message : String(err)));
+      toast("Error al cerrar: " + (err instanceof Error ? err.message : String(err)), "error");
     } finally {
       setLoading(false);
     }
@@ -251,7 +253,7 @@ export function ClosePositionDialog({
               </button>
             </div>
 
-            <form onSubmit={handleClose} className="p-6 space-y-4">
+            <form onSubmit={handleClose} noValidate className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className={labelClass}>Resultado</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

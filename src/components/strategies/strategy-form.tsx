@@ -110,7 +110,7 @@ export function StrategyForm({ strategy, onClose }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="p-4 md:p-6 space-y-4">
           <div className="space-y-1.5">
             <label className={labelClass}>Nombre</label>
             <input

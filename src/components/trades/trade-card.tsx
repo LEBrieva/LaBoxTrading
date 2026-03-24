@@ -185,7 +185,7 @@ export function TradeCard({
             </span>
             {externalId && (
               <span className="text-[#52525b] text-[10px] font-mono">
-                #{externalId.slice(0, 8)}
+                #{externalId.slice(0, 10)}
               </span>
             )}
           </div>

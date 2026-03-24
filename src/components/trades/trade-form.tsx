@@ -9,10 +9,22 @@ import { calcRiskUsd, calcRiskPct, calcTpPrice, calcEstimatedGain } from "@/lib/
 import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
 import { useStats } from "@/contexts/stats-context";
+import { useToast } from "@/components/ui/toast";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
 const labelClass = "text-[10px] uppercase tracking-[1.5px] text-[#71717a] font-semibold font-mono";
+
+function FieldError({ message }: { message: string }) {
+  return (
+    <div className="absolute left-0 top-full mt-1 z-50 animate-in fade-in-0 slide-in-from-top-1 duration-150">
+      <div className="relative bg-[#1c1012] border border-[#f87171]/40 text-[#f87171] text-[11px] font-mono px-3 py-1.5 rounded-lg shadow-lg">
+        <div className="absolute -top-[5px] left-4 w-2.5 h-2.5 bg-[#1c1012] border-l border-t border-[#f87171]/40 rotate-45" />
+        {message}
+      </div>
+    </div>
+  );
+}
 
 interface SymbolItem {
   id: string;
@@ -34,8 +46,10 @@ interface TradeFormProps {
 
 export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeFormProps) {
   const { stats: { currentCapital } } = useStats();
+  const { show: toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [pair, setPair] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [direction, setDirection] = useState<"LONG" | "SHORT">("LONG");
@@ -43,11 +57,12 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [size, setSize] = useState("");
-  const [riskPct, setRiskPct] = useState("1");
-  const [riskUsd, setRiskUsd] = useState(calcRiskUsd(currentCapital, 1).toFixed(2));
+  const [riskPct, setRiskPct] = useState("");
+  const [riskUsd, setRiskUsd] = useState("");
   const [externalId, setExternalId] = useState("");
   const [notes, setNotes] = useState("");
-  const [ratio, setRatio] = useState("3");
+  const [ratio, setRatio] = useState("1");
+  const [showSlWarning, setShowSlWarning] = useState(false);
   const [openedAt, setOpenedAt] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -141,6 +156,21 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    const newErrors: Record<string, string> = {};
+    if (!pair.trim()) newErrors.pair = "Completá este campo";
+    else if (symbols.length > 0 && !symbols.some((s) => s.name.toUpperCase() === pair.trim().toUpperCase()))
+      newErrors.pair = "Símbolo no encontrado";
+    if (!entry) newErrors.entry = "Completá este campo";
+    if (!size) newErrors.size = "Completá este campo";
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    setErrors({});
+
+    // SL warning
+    if (!stopLoss && !showSlWarning && !showRiskConfirm) {
+      setShowSlWarning(true);
+      return;
+    }
+
     // Check risk rules before submitting
     const hasRules = riskRules.dailyLossLimit || riskRules.maxRiskPct;
     if (hasRules && !showRiskConfirm) {
@@ -153,6 +183,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
     }
 
     setShowRiskConfirm(false);
+    setShowSlWarning(false);
     setRiskWarnings([]);
     setLoading(true);
     try {
@@ -164,8 +195,8 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
         stopLoss: stopLoss ? parseFloat(stopLoss) : undefined,
         takeProfit: takeProfit ? parseFloat(takeProfit) : undefined,
         size: size ? parseFloat(size) : undefined,
-        riskUsd: parseFloat(riskUsd),
-        riskPct: parseFloat(riskPct),
+        riskUsd: riskUsd ? parseFloat(riskUsd) : undefined,
+        riskPct: riskPct ? parseFloat(riskPct) : undefined,
         externalId: externalId || undefined,
         notes: notes || undefined,
         openedAt: openedAt ? new Date(openedAt).toISOString() : undefined,
@@ -184,6 +215,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
       router.refresh();
     } catch (err) {
       console.error(err);
+      toast("Error al crear trade: " + (err instanceof Error ? err.message : String(err)), "error");
     } finally {
       setLoading(false);
     }
@@ -196,11 +228,12 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
     setStopLoss("");
     setTakeProfit("");
     setSize("");
-    setRiskPct("1");
-    setRiskUsd(calcRiskUsd(currentCapital, 1).toFixed(2));
+    setRiskPct("");
+    setRiskUsd("");
     setExternalId("");
     setNotes("");
-    setRatio("3");
+    setRatio("1");
+    setShowSlWarning(false);
     setOpenedAt("");
     setImageFile(null);
     setImagePreview(null);
@@ -243,24 +276,25 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="p-4 md:p-6 space-y-4">
               {/* Par + Direccion */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5 relative" ref={suggestionsRef}>
                   <label className={labelClass}>Par / Instrumento</label>
                   <input
-                    className={inputClass}
+                    className={`${inputClass} ${errors.pair ? "!border-[#f87171]" : ""}`}
                     placeholder="US500, XAUUSD..."
                     value={pair}
                     onChange={(e) => {
                       setPair(e.target.value.toUpperCase());
                       setShowSuggestions(true);
+                      if (errors.pair) setErrors((prev) => { const { pair: _, ...rest } = prev; return rest; });
                     }}
                     onFocus={() => setShowSuggestions(true)}
-                    required
                     autoFocus
                     autoComplete="off"
                   />
+                  {errors.pair && <FieldError message={errors.pair} />}
                   {showSuggestions && filteredSymbols.length > 0 && (
                     <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-[200px] overflow-y-auto bg-[#1a1d27] border border-[#252833] rounded-lg shadow-xl">
                       {filteredSymbols.map((s) => (
@@ -271,6 +305,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                           onClick={() => {
                             setPair(s.name);
                             setShowSuggestions(false);
+                            if (errors.pair) setErrors((prev) => { const { pair: _, ...rest } = prev; return rest; });
                           }}
                         >
                           <span className="font-mono text-[13px] text-[#d4d4d8] font-semibold">{s.name}</span>
@@ -311,13 +346,21 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
 
               {/* Entry + SL + TP */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <label className={labelClass}>Precio de entrada</label>
-                  <input className={inputClass} type="number" step="any" placeholder="0.00" value={entry} onChange={(e) => setEntry(e.target.value)} />
+                  <input
+                    className={`${inputClass} ${errors.entry ? "!border-[#f87171]" : ""}`}
+                    type="number" step="any" placeholder="0.00" value={entry}
+                    onChange={(e) => {
+                      setEntry(e.target.value);
+                      if (errors.entry) setErrors((prev) => { const { entry: _, ...rest } = prev; return rest; });
+                    }}
+                  />
+                  {errors.entry && <FieldError message={errors.entry} />}
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClass}>Stop Loss</label>
-                  <input className={inputClass} type="number" step="any" placeholder="0.00" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} />
+                  <input className={inputClass} type="number" step="any" placeholder="0.00" value={stopLoss} onChange={(e) => { setStopLoss(e.target.value); setShowSlWarning(false); }} />
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClass}>Take Profit</label>
@@ -327,9 +370,17 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
 
               {/* Size + External ID */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <label className={labelClass}>Tamaño (lots)</label>
-                  <input className={inputClass} type="number" step="any" placeholder="0.01" value={size} onChange={(e) => setSize(e.target.value)} />
+                  <input
+                    className={`${inputClass} ${errors.size ? "!border-[#f87171]" : ""}`}
+                    type="number" step="any" placeholder="0.01" value={size}
+                    onChange={(e) => {
+                      setSize(e.target.value);
+                      if (errors.size) setErrors((prev) => { const { size: _, ...rest } = prev; return rest; });
+                    }}
+                  />
+                  {errors.size && <FieldError message={errors.size} />}
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClass}>ID Broker (opcional)</label>
@@ -339,13 +390,29 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
 
               {/* Risk % + Risk USD */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <label className={labelClass}>Riesgo en % del capital</label>
-                  <input className={inputClass} type="number" step="0.1" min="0.1" max="10" value={riskPct} onChange={(e) => handleRiskPctChange(e.target.value)} required />
+                  <input
+                    className={`${inputClass} ${errors.riskPct ? "!border-[#f87171]" : ""}`}
+                    type="number" step="any" min="0.1" max="10" value={riskPct}
+                    onChange={(e) => {
+                      handleRiskPctChange(e.target.value);
+                      if (errors.riskPct) setErrors((prev) => { const { riskPct: _, ...rest } = prev; return rest; });
+                    }}
+                  />
+                  {errors.riskPct && <FieldError message={errors.riskPct} />}
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <label className={labelClass}>Riesgo en USD</label>
-                  <input className={inputClass} type="number" step="0.01" min="0.1" value={riskUsd} onChange={(e) => handleRiskUsdChange(e.target.value)} required />
+                  <input
+                    className={`${inputClass} ${errors.riskUsd ? "!border-[#f87171]" : ""}`}
+                    type="number" step="any" min="0.1" value={riskUsd}
+                    onChange={(e) => {
+                      handleRiskUsdChange(e.target.value);
+                      if (errors.riskUsd) setErrors((prev) => { const { riskUsd: _, ...rest } = prev; return rest; });
+                    }}
+                  />
+                  {errors.riskUsd && <FieldError message={errors.riskUsd} />}
                 </div>
               </div>
 
@@ -447,6 +514,18 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                 </div>
               </div>
 
+              {/* SL warning */}
+              {showSlWarning && (
+                <div className="rounded-lg border border-[#fb923c]/30 bg-[#fb923c]/5 p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[#fb923c] text-base">⚠</span>
+                    <span className="text-[12px] font-bold text-[#fb923c] uppercase tracking-[1px]">Sin Stop Loss</span>
+                  </div>
+                  <p className="text-[12px] text-[#fb923c] font-mono">Estás abriendo un trade sin Stop Loss definido.</p>
+                  <p className="text-[10px] text-[#fb923c]/60 font-mono mt-1">Tocá &quot;Abrir igual&quot; para confirmar</p>
+                </div>
+              )}
+
               {/* Risk warning */}
               {showRiskConfirm && riskWarnings.length > 0 && (
                 <div className="rounded-lg border border-[#fbbf24]/30 bg-[#fbbf24]/5 p-4 space-y-2">
@@ -457,7 +536,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                   {riskWarnings.map((w, i) => (
                     <p key={i} className="text-[12px] text-[#fbbf24] font-mono">{w}</p>
                   ))}
-                  <p className="text-[10px] text-[#fbbf24]/60 font-mono mt-1">Tocá "Abrir igual" para confirmar</p>
+                  <p className="text-[10px] text-[#fbbf24]/60 font-mono mt-1">Tocá &quot;Abrir igual&quot; para confirmar</p>
                 </div>
               )}
 
@@ -465,7 +544,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
               <div className="flex justify-end gap-3 pt-2 border-t border-[#252833]">
                 <button
                   type="button"
-                  onClick={() => { setOpen(false); setShowRiskConfirm(false); setRiskWarnings([]); }}
+                  onClick={() => { setOpen(false); setShowRiskConfirm(false); setShowSlWarning(false); setRiskWarnings([]); }}
                   className="px-4 py-2 rounded-lg border border-[#252833] text-[#71717a] text-[13px] font-semibold hover:border-[#2f3340] hover:text-[#d4d4d8] transition-colors"
                 >
                   Cancelar
@@ -474,12 +553,12 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                   type="submit"
                   disabled={loading}
                   className={`px-5 py-2 rounded-lg text-[13px] font-bold hover:brightness-110 transition-all hover:-translate-y-[1px] disabled:opacity-50 ${
-                    showRiskConfirm
+                    showSlWarning || showRiskConfirm
                       ? "bg-[#fbbf24] text-[#08090c]"
                       : "bg-[#5eead4] text-[#08090c]"
                   }`}
                 >
-                  {loading ? "Abriendo..." : showRiskConfirm ? "Abrir igual" : "Abrir trade"}
+                  {loading ? "Abriendo..." : (showSlWarning || showRiskConfirm) ? "Abrir igual" : "Abrir trade"}
                 </button>
               </div>
             </form>

@@ -12,9 +12,10 @@ model User {
   email     String    @unique
   name      String?
   authId    String    @unique @map("auth_id")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  accounts   Account[]
-  strategies Strategy[]
+  createdAt      DateTime       @default(now()) @map("created_at")
+  accounts       Account[]
+  strategies     Strategy[]
+  journalEntries JournalEntry[]
 
   @@map("users")
 }
@@ -49,9 +50,9 @@ model Trade {
   stopLoss   Float?      @map("stop_loss")
   takeProfit Float?      @map("take_profit")
   size       Float?
-  riskUsd    Float       @map("risk_usd")
-  riskPct    Float       @map("risk_pct")
-  externalId String?     @map("external_id")
+  riskUsd    Float       @default(0) @map("risk_usd")
+  riskPct    Float       @default(0) @map("risk_pct")
+  externalId String?     @unique @map("external_id")
   notes      String?
   imageUrl   String?     @map("image_url")
   openedAt   DateTime    @default(now()) @map("opened_at")
@@ -150,6 +151,7 @@ model TradeChecklist {
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
+  ADJUSTMENT
 }
 
 model AccountTransaction {
@@ -164,6 +166,30 @@ model AccountTransaction {
 
   @@index([accountId, date])
   @@map("transactions")
+}
+
+enum Mood {
+  GREAT
+  GOOD
+  NEUTRAL
+  BAD
+  TERRIBLE
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  content   String
+  mood      Mood     @default(NEUTRAL)
+  tags      String[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("journal_entries")
 }
 
 model Symbol {

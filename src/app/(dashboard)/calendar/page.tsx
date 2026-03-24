@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
-import { getCalendarData } from "@/lib/actions/stats";
+import { getUnifiedCalendarData } from "@/lib/actions/stats";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
 export default async function CalendarPage() {
@@ -13,9 +13,9 @@ export default async function CalendarPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="flex flex-col items-center justify-center py-20 gap-2">
-          <span className="text-2xl text-[#252833]">◈</span>
+          <span className="text-2xl text-[#252833]">&#9672;</span>
           <p className="text-[12px] text-[#52525b] tracking-[2px] uppercase">
-            Seleccioná una cuenta primero
+            Selecciona una cuenta primero
           </p>
         </div>
       </div>
@@ -23,7 +23,7 @@ export default async function CalendarPage() {
   }
 
   const now = new Date();
-  const calendarData = await getCalendarData(
+  const calendarData = await getUnifiedCalendarData(
     activeAccountId,
     now.getFullYear(),
     now.getMonth()

@@ -224,6 +224,70 @@ export async function getCalendarData(accountId: string, year: number, month: nu
   return dayMap;
 }
 
+export interface UnifiedCalendarDay {
+  trades: number;
+  pnl: number;
+  mood?: string;
+  journalId?: string;
+}
+
+export async function getUnifiedCalendarData(
+  accountId: string,
+  year: number,
+  month: number
+): Promise<Record<string, UnifiedCalendarDay>> {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+  const [tradeRows, journalRows] = await Promise.all([
+    prisma.$queryRaw<{ day: string; trades: bigint; pnl: number }[]>`
+      SELECT
+        TO_CHAR(t.opened_at, 'YYYY-MM-DD') AS day,
+        COUNT(DISTINCT t.id)::bigint AS trades,
+        COALESCE(SUM(p.pnl), 0)::float AS pnl
+      FROM trades t
+      LEFT JOIN positions p ON p.trade_id = t.id
+      WHERE t.account_id = ${accountId}
+        AND t.opened_at >= ${startDate}
+        AND t.opened_at <= ${endDate}
+      GROUP BY TO_CHAR(t.opened_at, 'YYYY-MM-DD')
+      ORDER BY day ASC
+    `,
+    prisma.journalEntry.findMany({
+      where: {
+        userId: user.id,
+        date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) },
+      },
+      select: { id: true, date: true, mood: true },
+    }),
+  ]);
+
+  const dayMap: Record<string, UnifiedCalendarDay> = {};
+
+  for (const row of tradeRows) {
+    dayMap[row.day] = { trades: Number(row.trades), pnl: row.pnl };
+  }
+
+  for (const entry of journalRows) {
+    const d = entry.date;
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    if (dayMap[key]) {
+      dayMap[key].mood = entry.mood;
+      dayMap[key].journalId = entry.id;
+    } else {
+      dayMap[key] = { trades: 0, pnl: 0, mood: entry.mood, journalId: entry.id };
+    }
+  }
+
+  return dayMap;
+}
+
 export async function getDailyStats(accountId: string) {
   await verifyAccountOwnership(accountId);
 
@@ -388,7 +452,7 @@ export async function getWeeklyStats(accountId: string) {
 
 export interface TimelineEntry {
   id: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "TRADE";
+  type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "TRADE";
   date: string;
   amount: number;
   balance: number;
@@ -414,6 +478,7 @@ export async function getTimelineData(accountId: string, cursor?: string) {
         CASE tx.type
           WHEN 'DEPOSIT' THEN 'Depósito'
           WHEN 'WITHDRAWAL' THEN 'Retiro'
+          WHEN 'ADJUSTMENT' THEN 'Ajuste'
         END AS label,
         tx.note
       FROM transactions tx
@@ -445,11 +510,10 @@ export async function getTimelineData(accountId: string, cursor?: string) {
   const balanceMap = new Map<string, number>();
 
   for (const row of chronological) {
-    if (row.type === "DEPOSIT") {
-      balance += row.amount;
-    } else if (row.type === "WITHDRAWAL") {
+    if (row.type === "WITHDRAWAL") {
       balance -= row.amount;
     } else {
+      // DEPOSIT, ADJUSTMENT, TRADE — all add directly
       balance += row.amount;
     }
     balanceMap.set(row.id, Math.round(balance * 100) / 100);
@@ -468,7 +532,7 @@ export async function getTimelineData(accountId: string, cursor?: string) {
 
   const entries: TimelineEntry[] = page.map((row) => ({
     id: row.id,
-    type: row.type as "DEPOSIT" | "WITHDRAWAL" | "TRADE",
+    type: row.type as "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "TRADE",
     date: row.date.toISOString(),
     amount: row.type === "WITHDRAWAL" ? -row.amount : row.amount,
     balance: balanceMap.get(row.id) ?? 0,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createTransaction, updateTransaction } from "@/lib/actions/transactions";
+import { useToast } from "@/components/ui/toast";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -11,7 +12,7 @@ interface TransactionFormProps {
   accountId: string;
   editData?: {
     id: string;
-    type: "DEPOSIT" | "WITHDRAWAL";
+    type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT";
     amount: number;
     date: string;
     note: string | null;
@@ -21,10 +22,11 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ accountId, editData, onSuccess, onCancel }: TransactionFormProps) {
+  const { show: toast } = useToast();
   const isEdit = !!editData;
   const [open, setOpen] = useState(isEdit);
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState<"DEPOSIT" | "WITHDRAWAL">(editData?.type ?? "DEPOSIT");
+  const [type, setType] = useState<"DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT">(editData?.type ?? "DEPOSIT");
   const [amount, setAmount] = useState(editData?.amount?.toString() ?? "");
   const [date, setDate] = useState(editData?.date?.split("T")[0] ?? new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState(editData?.note ?? "");
@@ -54,7 +56,7 @@ export function TransactionForm({ accountId, editData, onSuccess, onCancel }: Tr
       onSuccess?.();
     } catch (err) {
       console.error(err);
-      alert("Error: " + (err instanceof Error ? err.message : String(err)));
+      toast("Error: " + (err instanceof Error ? err.message : String(err)), "error");
     } finally {
       setLoading(false);
     }
@@ -101,10 +103,10 @@ export function TransactionForm({ accountId, editData, onSuccess, onCancel }: Tr
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className={labelClass}>Tipo</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setType("DEPOSIT")}
@@ -127,22 +129,40 @@ export function TransactionForm({ accountId, editData, onSuccess, onCancel }: Tr
                   >
                     Retiro
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setType("ADJUSTMENT")}
+                    className={`py-2.5 rounded-lg border font-bold text-[13px] transition-all cursor-pointer ${
+                      type === "ADJUSTMENT"
+                        ? "bg-[#fbbf24]/10 border-[#fbbf24] text-[#fbbf24]"
+                        : "border-[#252833] text-[#71717a] hover:bg-[#1a1d27]"
+                    }`}
+                  >
+                    Ajuste
+                  </button>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>Monto (USD)</label>
+                <label className={labelClass}>
+                  Monto (USD){type === "ADJUSTMENT" && <span className="text-[#fbbf24] ml-1">puede ser negativo</span>}
+                </label>
                 <input
                   className={inputClass}
                   type="number"
                   step="0.01"
-                  min="0.01"
+                  min={type === "ADJUSTMENT" ? undefined : "0.01"}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  placeholder="0.00"
+                  placeholder={type === "ADJUSTMENT" ? "-1.50 o 2.30" : "0.00"}
                   autoFocus
                 />
+                {type === "ADJUSTMENT" && (
+                  <p className="text-[9px] text-[#52525b] font-mono">
+                    Positivo suma al capital, negativo resta. Para corregir desfasajes acumulados.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">

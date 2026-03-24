@@ -23,7 +23,7 @@ function revalidateAll() {
 
 export async function createTransaction(raw: {
   accountId: string;
-  type: "DEPOSIT" | "WITHDRAWAL";
+  type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT";
   amount: number;
   date: string;
   note?: string;
@@ -33,7 +33,9 @@ export async function createTransaction(raw: {
   checkRateLimit(user.id, "createTransaction", 30, 60_000);
   await verifyAccountOwnership(data.accountId, user.id);
 
-  const capitalDelta = data.type === "DEPOSIT" ? data.amount : -data.amount;
+  const capitalDelta =
+    data.type === "ADJUSTMENT" ? data.amount :
+    data.type === "DEPOSIT" ? data.amount : -data.amount;
 
   const result = await prisma.$transaction(async (db) => {
     const created = await db.accountTransaction.create({
@@ -61,7 +63,7 @@ export async function createTransaction(raw: {
 export async function updateTransaction(
   id: string,
   raw: {
-    type?: "DEPOSIT" | "WITHDRAWAL";
+    type?: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT";
     amount?: number;
     date?: string;
     note?: string | null;
@@ -79,10 +81,14 @@ export async function updateTransaction(
     throw new Error("Transacción no encontrada");
   }
 
-  const oldDelta = existing.type === "DEPOSIT" ? existing.amount : -existing.amount;
+  const oldDelta =
+    existing.type === "ADJUSTMENT" ? existing.amount :
+    existing.type === "DEPOSIT" ? existing.amount : -existing.amount;
   const newType = data.type ?? existing.type;
   const newAmount = data.amount ?? existing.amount;
-  const newDelta = newType === "DEPOSIT" ? newAmount : -newAmount;
+  const newDelta =
+    newType === "ADJUSTMENT" ? newAmount :
+    newType === "DEPOSIT" ? newAmount : -newAmount;
   const netChange = newDelta - oldDelta;
 
   const result = await prisma.$transaction(async (db) => {
@@ -122,7 +128,9 @@ export async function deleteTransaction(id: string) {
     throw new Error("Transacción no encontrada");
   }
 
-  const reverseDelta = existing.type === "DEPOSIT" ? -existing.amount : existing.amount;
+  const reverseDelta =
+    existing.type === "ADJUSTMENT" ? -existing.amount :
+    existing.type === "DEPOSIT" ? -existing.amount : existing.amount;
 
   await prisma.$transaction(async (db) => {
     await db.accountTransaction.delete({ where: { id } });

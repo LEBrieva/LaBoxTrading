@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateRiskRules } from "@/lib/actions/accounts";
+import { useToast } from "@/components/ui/toast";
 
 const inputClass =
   "w-full bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-3 py-2.5 rounded-lg font-mono text-[13px] outline-none transition-colors placeholder:text-[#52525b] focus:border-[#5eead4]";
@@ -25,6 +26,7 @@ export function RiskRulesSection({
   const [maxRiskPct, setMaxRiskPct] = useState(initialRules.maxRiskPct?.toString() ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { show: toast } = useToast();
 
   async function handleSave() {
     setSaving(true);
@@ -38,7 +40,7 @@ export function RiskRulesSection({
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       console.error(err);
-      alert("Error al guardar reglas");
+      toast("Error al guardar reglas", "error");
     } finally {
       setSaving(false);
     }
@@ -78,7 +80,7 @@ export function RiskRulesSection({
           <input
             className={inputClass}
             type="number"
-            step="0.1"
+            step="any"
             min="0"
             max="100"
             placeholder="Ej: 2"

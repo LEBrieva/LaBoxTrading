@@ -15,8 +15,8 @@ export async function createTrade(raw: {
   stopLoss?: number;
   takeProfit?: number;
   size?: number;
-  riskUsd: number;
-  riskPct: number;
+  riskUsd?: number;
+  riskPct?: number;
   externalId?: string;
   notes?: string;
   imageUrl?: string;
@@ -40,8 +40,8 @@ export async function createTrade(raw: {
       stopLoss: data.stopLoss || null,
       takeProfit: data.takeProfit || null,
       size: data.size || null,
-      riskUsd: data.riskUsd,
-      riskPct: data.riskPct,
+      riskUsd: data.riskUsd ?? 0,
+      riskPct: data.riskPct ?? 0,
       externalId: data.externalId || null,
       notes: data.notes || null,
       imageUrl: data.imageUrl || null,
@@ -210,6 +210,36 @@ export async function getTradesPaginated(accountId: string, filters?: {
       totalPnl: agg?.total_pnl ?? 0,
     },
   };
+}
+
+export async function getTradesForDay(accountId: string, dateKey: string) {
+  const user = await getUser();
+  const account = await prisma.account.findFirst({
+    where: { id: accountId, userId: user.id },
+  });
+  if (!account) throw new Error("Cuenta no encontrada");
+
+  const start = new Date(dateKey + "T00:00:00");
+  const end = new Date(dateKey + "T23:59:59");
+
+  return prisma.trade.findMany({
+    where: {
+      accountId,
+      openedAt: { gte: start, lte: end },
+    },
+    include: {
+      positions: true,
+      _count: { select: { images: true } },
+      checklist: {
+        select: {
+          id: true,
+          strategyId: true,
+          strategy: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { openedAt: "desc" },
+  });
 }
 
 export async function getTrade(id: string) {

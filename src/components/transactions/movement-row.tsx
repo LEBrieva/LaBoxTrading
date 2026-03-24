@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/calculations";
 const typeBadge: Record<string, { label: string; color: string; bg: string; border: string }> = {
   DEPOSIT: { label: "Depósito", color: "#4ade80", bg: "rgba(74,222,128,0.1)", border: "rgba(74,222,128,0.25)" },
   WITHDRAWAL: { label: "Retiro", color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.25)" },
+  ADJUSTMENT: { label: "Ajuste", color: "#fbbf24", bg: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.25)" },
   TRADE: { label: "Trade", color: "#5eead4", bg: "rgba(94,234,212,0.1)", border: "rgba(94,234,212,0.25)" },
 };
 

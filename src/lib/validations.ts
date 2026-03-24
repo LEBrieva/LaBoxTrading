@@ -35,8 +35,8 @@ export const createTradeSchema = z.object({
   stopLoss: optionalNumber,
   takeProfit: optionalNumber,
   size: z.number().positive().optional(),
-  riskUsd: z.number().min(0),
-  riskPct: z.number().min(0).max(100),
+  riskUsd: z.number().min(0).optional(),
+  riskPct: z.number().min(0).max(100).optional(),
   externalId: optionalString,
   notes: z.string().max(5000).optional(),
   imageUrl: z.url().optional(),
@@ -65,15 +65,15 @@ export const closePositionSchema = z.object({
 // ── Transactions ─────────────────────────────────────────────────
 export const createTransactionSchema = z.object({
   accountId: cuid,
-  type: z.enum(["DEPOSIT", "WITHDRAWAL"]),
-  amount: z.number().positive("El monto debe ser mayor a 0"),
+  type: z.enum(["DEPOSIT", "WITHDRAWAL", "ADJUSTMENT"]),
+  amount: z.number().refine((v) => v !== 0, { message: "El monto no puede ser 0" }),
   date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }),
   note: z.string().max(500).optional(),
 });
 
 export const updateTransactionSchema = z.object({
-  type: z.enum(["DEPOSIT", "WITHDRAWAL"]).optional(),
-  amount: z.number().positive("El monto debe ser mayor a 0").optional(),
+  type: z.enum(["DEPOSIT", "WITHDRAWAL", "ADJUSTMENT"]).optional(),
+  amount: z.number().refine((v) => v !== 0, { message: "El monto no puede ser 0" }).optional(),
   date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }).optional(),
   note: z.string().max(500).nullable().optional(),
 });
@@ -112,4 +112,12 @@ export const saveChecklistSchema = z.object({
   tradeId: cuid,
   strategyId: cuid,
   values: z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])),
+});
+
+// ── Journal ──────────────────────────────────────────────────────
+export const upsertJournalEntrySchema = z.object({
+  date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }),
+  content: z.string().min(1, "El contenido no puede estar vacío").max(5000, "Máximo 5000 caracteres"),
+  mood: z.enum(["GREAT", "GOOD", "NEUTRAL", "BAD", "TERRIBLE"]),
+  tags: z.array(z.string().max(50)).max(10).optional(),
 });

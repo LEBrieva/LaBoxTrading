@@ -11,6 +11,7 @@ import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
 import { LiveCloseButton } from "./live-close-button";
 import { TradeChecklist } from "./trade-checklist";
+import { useToast } from "@/components/ui/toast";
 
 interface Position {
   id: string;
@@ -99,6 +100,7 @@ export function TradeDrawer({
   ) => void;
 }) {
   const { refreshStats } = useStats();
+  const { show: toast } = useToast();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN" || p.status === "PARTIAL");
   const isLong = trade.direction === "LONG";
@@ -226,7 +228,7 @@ export function TradeDrawer({
         openedAt: trade.openedAt,
       });
       setEditing(true);
-      alert("Error al guardar. Intente de nuevo.");
+      toast("Error al guardar. Intente de nuevo.", "error");
     }
   }
 
@@ -663,7 +665,7 @@ export function TradeDrawer({
                             } catch (err) {
                               console.error(err);
                               onTradeRestored?.(trade);
-                              alert("Error al eliminar. El trade fue restaurado.");
+                              toast("Error al eliminar. El trade fue restaurado.", "error");
                             }
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#f87171] text-[#08090c] text-[11px] font-bold hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"

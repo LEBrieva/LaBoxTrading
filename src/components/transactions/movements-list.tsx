@@ -6,7 +6,7 @@ import { deleteTransaction } from "@/lib/actions/transactions";
 import { MovementRow } from "./movement-row";
 import { TransactionForm } from "./transaction-form";
 
-type TypeFilter = "ALL" | "DEPOSIT" | "WITHDRAWAL" | "TRADE";
+type TypeFilter = "ALL" | "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "TRADE";
 
 const filterBtnClass = (active: boolean) =>
   `px-3 py-1.5 rounded text-[11px] uppercase tracking-[1.5px] font-semibold transition-colors cursor-pointer ${
@@ -157,6 +157,12 @@ export function MovementsList({
             Retiros
           </button>
           <button
+            onClick={() => setTypeFilter("ADJUSTMENT")}
+            className={`${filterBtnClass(typeFilter === "ADJUSTMENT")} ${typeFilter === "ADJUSTMENT" ? "!bg-[#fbbf24]/10 !text-[#fbbf24] !border-[#fbbf24]/30" : ""}`}
+          >
+            Ajustes
+          </button>
+          <button
             onClick={() => setTypeFilter("TRADE")}
             className={`${filterBtnClass(typeFilter === "TRADE")} ${typeFilter === "TRADE" ? "!bg-[#5eead4]/10 !text-[#5eead4] !border-[#5eead4]/30" : ""}`}
           >
@@ -248,7 +254,7 @@ export function MovementsList({
           accountId={accountId}
           editData={{
             id: editEntry.id,
-            type: editEntry.type as "DEPOSIT" | "WITHDRAWAL",
+            type: editEntry.type as "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT",
             amount: Math.abs(editEntry.amount),
             date: editEntry.date,
             note: editEntry.note,
