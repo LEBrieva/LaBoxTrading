@@ -60,9 +60,10 @@ export function calcUnrealizedPnl(
   entry: number,
   currentPrice: number,
   size: number,
-  direction: "LONG" | "SHORT"
+  direction: "LONG" | "SHORT",
+  contractSize: number = 1
 ): number {
   return direction === "LONG"
-    ? (currentPrice - entry) * size
-    : (entry - currentPrice) * size;
+    ? (currentPrice - entry) * size * contractSize
+    : (entry - currentPrice) * size * contractSize;
 }

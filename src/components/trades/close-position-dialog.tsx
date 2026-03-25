@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { closePosition } from "@/lib/actions/trades";
 import { useStats } from "@/contexts/stats-context";
+import { usePrices } from "@/contexts/price-context";
 import { useToast } from "@/components/ui/toast";
 
 const inputClass =
@@ -84,15 +85,17 @@ export function ClosePositionDialog({
   const [brokerId, setBrokerId] = useState("");
   const [loading, setLoading] = useState(false);
   const { refreshStats } = useStats();
+  const { contractSizeMap } = usePrices();
   const { show: toast } = useToast();
 
   const canCalcPnl = trade && trade.entry != null && trade.size != null;
+  const cs = trade ? (contractSizeMap[trade.pair] ?? 1) : 1;
 
   function calcPnl(price: number, pctOverride?: number): string {
     if (!trade || trade.entry == null || trade.size == null) return "";
     const size = pctOverride != null ? trade.size * (pctOverride / 100) : trade.size;
     const diff = trade.direction === "LONG" ? price - trade.entry : trade.entry - price;
-    return (diff * size).toFixed(2);
+    return (diff * size * cs).toFixed(2);
   }
 
   // Pre-fill exit price with live price when dialog opens
@@ -188,7 +191,7 @@ export function ClosePositionDialog({
         result === "PARTIAL" ? parseFloat(partialPct) : undefined,
         closedAt || undefined,
         exitPrice ? parseFloat(exitPrice) : undefined,
-        brokerId.trim() || undefined
+        result === "PARTIAL" ? (brokerId.trim() || undefined) : undefined
       );
       setOpen(false);
       setExitPrice("");

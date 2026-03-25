@@ -17,6 +17,7 @@ interface PriceContextValue {
   prices: Record<string, PriceData>;
   status: ConnectionStatus;
   decimalsMap: Record<string, number>;
+  contractSizeMap: Record<string, number>;
   subscribePair: (pair: string) => void;
 }
 
@@ -24,6 +25,7 @@ const PriceContext = createContext<PriceContextValue>({
   prices: {},
   status: "disconnected",
   decimalsMap: {},
+  contractSizeMap: {},
   subscribePair: () => {},
 });
 
@@ -36,11 +38,13 @@ const THROTTLE_MS = 1000;
 export function PriceProvider({
   openPairs,
   decimalsMap,
+  contractSizeMap,
   broker,
   children,
 }: {
   openPairs: string[];
   decimalsMap: Record<string, number>;
+  contractSizeMap: Record<string, number>;
   broker: string;
   children: ReactNode;
 }) {
@@ -146,7 +150,7 @@ export function PriceProvider({
   }, [openPairs]);
 
   return (
-    <PriceContext.Provider value={{ prices, status, decimalsMap, subscribePair }}>
+    <PriceContext.Provider value={{ prices, status, decimalsMap, contractSizeMap, subscribePair }}>
       {children}
     </PriceContext.Provider>
   );

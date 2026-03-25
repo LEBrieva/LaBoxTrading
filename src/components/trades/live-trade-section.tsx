@@ -73,13 +73,13 @@ export function LiveTradeSection({
     tradeUpdates?: Partial<Trade>
   ) => void;
 }) {
-  const { prices, decimalsMap, subscribePair } = usePrices();
+  const { prices, decimalsMap, contractSizeMap, subscribePair } = usePrices();
   const isLong = trade.direction === "LONG";
   const priceData = prices[trade.pair];
   const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
   const unrealizedPnl =
     trade.entry != null && trade.size != null && livePrice != null
-      ? calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction)
+      ? calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction, contractSizeMap[trade.pair] ?? 1)
       : null;
   const dec = decimalsMap[trade.pair] ?? 2;
 

@@ -11,7 +11,7 @@ interface Trade {
 }
 
 export function FloatingPnl({ openTrades }: { openTrades: Trade[] }) {
-  const { prices } = usePrices();
+  const { prices, contractSizeMap } = usePrices();
 
   let floatingPnl = 0;
   for (const trade of openTrades) {
@@ -19,7 +19,7 @@ export function FloatingPnl({ openTrades }: { openTrades: Trade[] }) {
     const price = prices[trade.pair];
     if (!price) continue;
     const livePrice = trade.direction === "LONG" ? price.bid : price.ask;
-    floatingPnl += calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction);
+    floatingPnl += calcUnrealizedPnl(trade.entry, livePrice, trade.size, trade.direction, contractSizeMap[trade.pair] ?? 1);
   }
 
   if (floatingPnl === 0) return null;

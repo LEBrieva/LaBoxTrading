@@ -14,13 +14,13 @@ export function DrawerLivePnl({
   entry: number | null;
   size: number | null;
 }) {
-  const { prices, decimalsMap } = usePrices();
+  const { prices, decimalsMap, contractSizeMap } = usePrices();
   const isLong = direction === "LONG";
   const priceData = prices[pair];
   const livePrice = priceData ? (isLong ? priceData.bid : priceData.ask) : null;
   const unrealizedPnl =
     entry != null && size != null && livePrice != null
-      ? calcUnrealizedPnl(entry, livePrice, size, direction)
+      ? calcUnrealizedPnl(entry, livePrice, size, direction, contractSizeMap[pair] ?? 1)
       : null;
   const dec = decimalsMap[pair] ?? 2;
 

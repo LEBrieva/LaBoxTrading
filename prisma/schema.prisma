@@ -195,11 +195,12 @@ model JournalEntry {
 }
 
 model Symbol {
-  id       String @id @default(cuid())
-  name     String
-  broker   Broker @default(SIMPLEFX)
-  category String
-  decimals Int    @default(2)
+  id           String @id @default(cuid())
+  name         String
+  broker       Broker @default(SIMPLEFX)
+  category     String
+  decimals     Int    @default(2)
+  contractSize Float  @default(1) @map("contract_size")
 
   @@unique([name, broker])
   @@map("symbols")

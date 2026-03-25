@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
 import { getUser } from "@/lib/actions/auth";
-import { getOpenTradePairs, getSymbolDecimalsMap } from "@/lib/actions/symbols";
+import { getOpenTradePairs, getSymbolDecimalsMap, getContractSizeMap } from "@/lib/actions/symbols";
 import { AccountSwitcherWrapper } from "@/components/layout/account-switcher-wrapper";
 import { NavLinks } from "@/components/layout/nav-links";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
@@ -21,14 +21,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const account = accounts.find(a => a.id === activeAccountId) || accounts[0];
   const broker = account?.broker || "SIMPLEFX";
 
-  const [openPairs, decimalsMap] = await Promise.all([
+  const [openPairs, decimalsMap, contractSizeMap] = await Promise.all([
     getOpenTradePairs(),
     getSymbolDecimalsMap(broker),
+    getContractSizeMap(broker),
   ]);
 
   return (
     <PrivacyProvider>
-      <PriceProviderWrapper openPairs={openPairs} decimalsMap={decimalsMap} broker={broker}>
+      <PriceProviderWrapper openPairs={openPairs} decimalsMap={decimalsMap} contractSizeMap={contractSizeMap} broker={broker}>
         <StatsProviderWrapper
           key={activeAccountId}
           accountId={activeAccountId}
