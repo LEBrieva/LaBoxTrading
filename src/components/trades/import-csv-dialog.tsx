@@ -38,7 +38,7 @@ export function ImportCsvDialog({ accountId }: ImportCsvDialogProps) {
       const text = await file.text();
       const res = await importSimplefxTrades(accountId, text);
       setResult(res);
-      if (res.imported > 0) {
+      if (res.imported > 0 || res.closed > 0) {
         router.refresh();
       }
     } catch (err) {
@@ -109,6 +109,11 @@ export function ImportCsvDialog({ accountId }: ImportCsvDialogProps) {
                   label="Importados"
                   value={result.imported}
                   color="#4ade80"
+                />
+                <StatBox
+                  label="Cerrados"
+                  value={result.closed}
+                  color="#facc15"
                 />
                 <StatBox
                   label="Duplicados"

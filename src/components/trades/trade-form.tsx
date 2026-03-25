@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTrade } from "@/lib/actions/trades";
+import { saveTradeChecklist } from "@/lib/actions/trade-checklist";
 import { addTradeImage } from "@/lib/actions/trade-images";
 import { getDailyPnl } from "@/lib/actions/accounts";
 import { calcRiskUsd, calcRiskPct, calcTpPrice, calcEstimatedGain } from "@/lib/calculations";
@@ -38,13 +39,19 @@ interface RiskRules {
   maxRiskPct?: number;
 }
 
+interface StrategyItem {
+  id: string;
+  name: string;
+}
+
 interface TradeFormProps {
   accountId: string;
   symbols?: SymbolItem[];
   riskRules?: RiskRules;
+  strategies?: StrategyItem[];
 }
 
-export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeFormProps) {
+export function TradeForm({ accountId, symbols = [], riskRules = {}, strategies = [] }: TradeFormProps) {
   const { stats: { currentCapital } } = useStats();
   const { show: toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -61,6 +68,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
   const [riskUsd, setRiskUsd] = useState("");
   const [externalId, setExternalId] = useState("");
   const [notes, setNotes] = useState("");
+  const [strategyId, setStrategyId] = useState("");
   const [ratio, setRatio] = useState("1");
   const [showSlWarning, setShowSlWarning] = useState(false);
   const [openedAt, setOpenedAt] = useState("");
@@ -205,6 +213,10 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
         openedAt: openedAt ? new Date(openedAt).toISOString() : undefined,
       });
 
+      if (strategyId) {
+        await saveTradeChecklist({ tradeId: trade.id, strategyId, values: {} });
+      }
+
       if (imageFile) {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -235,6 +247,7 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
     setRiskUsd("");
     setExternalId("");
     setNotes("");
+    setStrategyId("");
     setRatio("1");
     setShowSlWarning(false);
     setOpenedAt("");
@@ -486,6 +499,23 @@ export function TradeForm({ accountId, symbols = [], riskRules = {} }: TradeForm
                 />
                 <p className="text-[9px] text-[#52525b] font-mono">Deja vacio para usar la fecha actual</p>
               </div>
+
+              {/* Strategy */}
+              {strategies.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className={labelClass}>Estrategia (opcional)</label>
+                  <select
+                    className={`${inputClass} cursor-pointer`}
+                    value={strategyId}
+                    onChange={(e) => setStrategyId(e.target.value)}
+                  >
+                    <option value="">Sin estrategia</option>
+                    {strategies.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Notes */}
               <div className="space-y-1.5">

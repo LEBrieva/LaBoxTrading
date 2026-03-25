@@ -91,6 +91,7 @@ model Position {
   closedAt   DateTime?      @map("closed_at")
   isPartial  Boolean        @default(false) @map("is_partial")
   partialPct Float?         @map("partial_pct")
+  externalId String?        @unique @map("external_id")
 
   @@index([tradeId])
   @@map("positions")

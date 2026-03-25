@@ -144,34 +144,61 @@ export function TradesList({
     ) => {
       setTrades((prev) => {
         let tradeBecomesFullyClosed = false;
+        const closedAtDate = closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date();
 
         const updated = prev.map((t) => {
           if (t.id !== tradeId) return t;
 
-          const updatedPositions = t.positions.map((p) => {
-            if (p.id !== positionId) return p;
-            return {
-              ...p,
-              status: closedPosition.status,
+          let finalPositions;
+
+          if (closedPosition.status === "PARTIAL" && closedPosition.partialPct) {
+            // PARTIAL: keep original position OPEN with reduced size, add new PARTIAL position
+            const closedSize = (t.size ?? 0) * (closedPosition.partialPct / 100);
+            const remaining = (t.size ?? 0) * (1 - closedPosition.partialPct / 100);
+
+            finalPositions = t.positions.map((p) => {
+              if (p.id !== positionId) return p;
+              return { ...p, size: Math.round(remaining * 1e8) / 1e8 };
+            });
+
+            finalPositions.push({
+              id: `temp-${Date.now()}`,
+              label: `Posicion ${t.positions.length + 1}`,
+              status: "PARTIAL",
+              size: Math.round(closedSize * 1e8) / 1e8,
               pnl: closedPosition.pnl,
-              closePrice: closedPosition.closePrice ?? p.closePrice,
-              closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date(),
-              isPartial: closedPosition.status === "PARTIAL",
-              partialPct: closedPosition.partialPct ?? p.partialPct,
-            };
-          });
+              closePrice: closedPosition.closePrice ?? null,
+              closedAt: closedAtDate,
+              isPartial: true,
+              partialPct: closedPosition.partialPct,
+            });
+          } else {
+            // FULL CLOSE (TP/SL/BE): update position in-place
+            finalPositions = t.positions.map((p) => {
+              if (p.id !== positionId) return p;
+              return {
+                ...p,
+                status: closedPosition.status,
+                pnl: closedPosition.pnl,
+                closePrice: closedPosition.closePrice ?? p.closePrice,
+                closedAt: closedAtDate,
+                isPartial: false,
+                partialPct: null,
+              };
+            });
 
-          // If SL, close ALL open positions (mirrors server logic)
-          const finalPositions = closedPosition.status === "SL"
-            ? updatedPositions.map((p) =>
+            // If SL, close ALL remaining open positions
+            if (closedPosition.status === "SL") {
+              finalPositions = finalPositions.map((p) =>
                 p.status === "OPEN"
-                  ? { ...p, status: "SL", pnl: 0, closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date() }
+                  ? { ...p, status: "SL", pnl: 0, closedAt: closedAtDate }
                   : p
-              )
-            : updatedPositions;
+              );
+            }
+          }
 
-          // PARTIAL positions are still open — only TP/SL/BE are fully closed
-          const allClosed = finalPositions.every((p) => p.status !== "OPEN" && p.status !== "PARTIAL");
+          // Only OPEN positions indicate remaining exposure
+          const allClosed = finalPositions.every((p) => p.status !== "OPEN");
 
           if (t.status === "OPEN" && allClosed) {
             tradeBecomesFullyClosed = true;
@@ -182,7 +209,7 @@ export function TradesList({
             positions: finalPositions,
             ...(allClosed && {
               status: "CLOSED",
-              closedAt: closedPosition.closedAt ? new Date(closedPosition.closedAt) : new Date(),
+              closedAt: closedAtDate,
             }),
             ...tradeUpdates,
           };

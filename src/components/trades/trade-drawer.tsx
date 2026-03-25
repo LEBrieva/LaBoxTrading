@@ -102,7 +102,7 @@ export function TradeDrawer({
   const { refreshStats } = useStats();
   const { show: toast } = useToast();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
-  const openPositions = trade.positions.filter((p) => p.status === "OPEN" || p.status === "PARTIAL");
+  const openPositions = trade.positions.filter((p) => p.status === "OPEN");
   const isLong = trade.direction === "LONG";
   const firstClosed = trade.positions[0]?.status;
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
@@ -620,7 +620,7 @@ export function TradeDrawer({
 
               {/* Close trade */}
               {!editing && (() => {
-                const pos = trade.positions.find((p) => p.status === "OPEN" || p.status === "PARTIAL");
+                const pos = trade.positions.find((p) => p.status === "OPEN");
                 if (!pos) return null;
                 return (
                   <div className="pt-3 border-t border-[#252833]">

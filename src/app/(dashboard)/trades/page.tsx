@@ -10,16 +10,17 @@ import { TradeForm } from "@/components/trades/trade-form";
 import { ImportCsvDialog } from "@/components/trades/import-csv-dialog";
 
 async function TradeFormSection({ accountId, broker }: { accountId: string; broker: Broker }) {
-  const [symbols, riskRules] = await Promise.all([
+  const [symbols, riskRules, strategies] = await Promise.all([
     getSymbols(broker),
     getRiskRules(accountId),
+    getStrategies(),
   ]);
   return (
     <div className="flex items-center gap-2">
       {broker === "SIMPLEFX" && (
         <ImportCsvDialog accountId={accountId} />
       )}
-      <TradeForm accountId={accountId} symbols={symbols} riskRules={riskRules} />
+      <TradeForm accountId={accountId} symbols={symbols} riskRules={riskRules} strategies={strategies} />
     </div>
   );
 }

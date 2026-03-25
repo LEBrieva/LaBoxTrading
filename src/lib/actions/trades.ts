@@ -304,7 +304,8 @@ export async function closePosition(
   pnl: number,
   partialPct?: number,
   closedAtStr?: string,
-  closePrice?: number
+  closePrice?: number,
+  externalId?: string
 ) {
   closePositionSchema.parse({ positionId, result, pnl, partialPct, closedAt: closedAtStr, closePrice });
   const user = await getUser();
@@ -321,49 +322,71 @@ export async function closePosition(
 
   const isPartial = result === "PARTIAL";
   const closedAt = closedAtStr ? new Date(closedAtStr) : new Date();
-
-  // Calculate position size
   const tradeSize = position.trade.size;
-  const positionSize = isPartial && partialPct && tradeSize != null
-    ? tradeSize * (partialPct / 100)
-    : tradeSize;
 
-  // Update position
-  await prisma.position.update({
-    where: { id: positionId },
-    data: {
-      status: result,
-      size: positionSize ?? null,
-      pnl,
-      closePrice: closePrice ?? null,
-      closedAt,
-      isPartial,
-      partialPct: partialPct || null,
-    },
-  });
+  if (isPartial && partialPct && tradeSize != null) {
+    // PARTIAL: create NEW position for the closed portion, keep original OPEN
+    const closedSize = Math.round(tradeSize * (partialPct / 100) * 1e8) / 1e8;
+    const remaining = Math.round(tradeSize * (1 - partialPct / 100) * 1e8) / 1e8;
+    const posCount = await prisma.position.count({ where: { tradeId: position.tradeId } });
 
-  // If PARTIAL, reduce trade size proportionally
-  if (isPartial && partialPct && position.trade.size != null) {
-    const remaining = position.trade.size * (1 - partialPct / 100);
+    // Create new position for the closed chunk
+    await prisma.position.create({
+      data: {
+        tradeId: position.tradeId,
+        label: `Posicion ${posCount + 1}`,
+        status: "PARTIAL",
+        size: closedSize,
+        pnl,
+        closePrice: closePrice ?? null,
+        closedAt,
+        isPartial: true,
+        partialPct,
+        ...(externalId && { externalId }),
+      },
+    });
+
+    // Update original position: reduce size, keep OPEN
+    await prisma.position.update({
+      where: { id: positionId },
+      data: { size: remaining },
+    });
+
+    // Reduce trade size
     await prisma.trade.update({
       where: { id: position.tradeId },
-      data: { size: Math.round(remaining * 1e8) / 1e8 },
+      data: { size: remaining },
     });
-  }
-
-  // If SL, close ALL open positions of this trade
-  if (result === "SL") {
-    await prisma.position.updateMany({
-      where: {
-        tradeId: position.tradeId,
-        status: "OPEN",
-      },
+  } else {
+    // FULL CLOSE (TP/SL/BE): update existing position in-place
+    await prisma.position.update({
+      where: { id: positionId },
       data: {
-        status: "SL",
-        pnl: 0,
+        status: result,
+        size: tradeSize ?? null,
+        pnl,
+        closePrice: closePrice ?? null,
         closedAt,
+        isPartial: false,
+        partialPct: null,
+        ...(externalId && { externalId }),
       },
     });
+
+    // If SL, close ALL remaining open positions of this trade
+    if (result === "SL") {
+      await prisma.position.updateMany({
+        where: {
+          tradeId: position.tradeId,
+          status: "OPEN",
+        },
+        data: {
+          status: "SL",
+          pnl: 0,
+          closedAt,
+        },
+      });
+    }
   }
 
   // Update account capital with this position's PnL
@@ -375,11 +398,11 @@ export async function closePosition(
   });
 
   // Check if all positions are closed -> close trade
-  // PARTIAL positions are still open (remaining size can be closed later)
+  // Only OPEN positions indicate remaining exposure
   const openPositions = await prisma.position.count({
     where: {
       tradeId: position.tradeId,
-      status: { in: ["OPEN", "PARTIAL"] },
+      status: "OPEN",
     },
   });
 

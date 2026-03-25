@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { getUser } from "./auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
-import { parseSimplefxCsv } from "@/lib/import/simplefx-csv";
+import { parseSimplefxCsv, type ParsedRow } from "@/lib/import/simplefx-csv";
 
 const MAX_ROWS = 2000;
 
 export interface ImportResult {
   imported: number;
+  closed: number;
   duplicates: number;
   pending: number;
   errors: { line: number; reason: string }[];
@@ -34,12 +35,13 @@ export async function importSimplefxTrades(
   const errors = [...parsed.errors];
 
   if (parsed.rows.length === 0) {
-    return { imported: 0, duplicates: 0, pending: parsed.pending, errors };
+    return { imported: 0, closed: 0, duplicates: 0, pending: parsed.pending, errors };
   }
 
   if (parsed.rows.length > MAX_ROWS) {
     return {
       imported: 0,
+      closed: 0,
       duplicates: 0,
       pending: parsed.pending,
       errors: [{ line: 0, reason: `Demasiadas filas (${parsed.rows.length}). Maximo: ${MAX_ROWS}` }],
@@ -54,42 +56,92 @@ export async function importSimplefxTrades(
   });
   const validSymbols = new Set(dbSymbols.map((s) => s.name));
 
-  // Batch: get existing externalIds
+  // Batch: get existing externalIds from trades AND positions
   const externalIds = parsed.rows.map((r) => r.externalId);
-  const existing = await prisma.trade.findMany({
-    where: { externalId: { in: externalIds } },
-    select: { externalId: true },
-  });
-  const existingIds = new Set(existing.map((t) => t.externalId));
+  const [existingTrades, existingPositions] = await Promise.all([
+    prisma.trade.findMany({
+      where: { externalId: { in: externalIds } },
+      select: { externalId: true, status: true },
+    }),
+    prisma.position.findMany({
+      where: { externalId: { in: externalIds } },
+      select: { externalId: true },
+    }),
+  ]);
+  const existingTradeMap = new Map(existingTrades.map((t) => [t.externalId, t.status]));
+  const existingPositionIds = new Set(existingPositions.map((p) => p.externalId));
 
-  // Filter rows
+  // Batch: get open trades for this account to match partial/full closes
+  const openTrades = await prisma.trade.findMany({
+    where: { accountId, status: "OPEN" },
+    include: { positions: true },
+  });
+
+  // Filter rows into: new trades, and rows that could close an open trade
   let duplicates = 0;
-  const validRows = parsed.rows.filter((row) => {
-    // Check duplicate
-    if (existingIds.has(row.externalId)) {
+  const newRows: ParsedRow[] = [];
+  const closeRows: { row: ParsedRow; openTradeId: string; openTradeSize: number }[] = [];
+  const runningSizeByTrade = new Map<string, number>();
+
+  for (const row of parsed.rows) {
+    // Check externalId duplicate in trades (CLOSED) or positions
+    if (existingPositionIds.has(row.externalId)) {
       duplicates++;
-      return false;
+      continue;
+    }
+    if (existingTradeMap.has(row.externalId)) {
+      const status = existingTradeMap.get(row.externalId);
+      if (status === "CLOSED") {
+        duplicates++;
+        continue;
+      }
+      // OPEN trade with same externalId — will be handled as a close match below
     }
 
     // Check symbol exists
     if (!validSymbols.has(row.symbol.toUpperCase())) {
       errors.push({ line: 0, reason: `Simbolo no encontrado: ${row.symbol}` });
-      return false;
+      continue;
     }
 
-    return true;
-  });
+    // Try to match with an open trade by symbol + direction + entry + openedAt
+    const matchedTrade = openTrades.find((t) =>
+      t.pair === row.symbol.toUpperCase() &&
+      t.direction === row.direction &&
+      t.entry !== null && Math.abs(t.entry - row.entry) < 0.000001 &&
+      t.openedAt.getTime() === row.openedAt.getTime()
+    );
 
-  if (validRows.length === 0) {
-    return { imported: 0, duplicates, pending: parsed.pending, errors };
+    if (matchedTrade) {
+      // Use running size to handle multiple closes for the same trade
+      const currentSize = runningSizeByTrade.get(matchedTrade.id) ?? (matchedTrade.size ?? 0);
+      closeRows.push({
+        row,
+        openTradeId: matchedTrade.id,
+        openTradeSize: currentSize,
+      });
+      runningSizeByTrade.set(matchedTrade.id, Math.round((currentSize - row.size) * 1e8) / 1e8);
+    } else if (!existingTradeMap.has(row.externalId)) {
+      newRows.push(row);
+    } else {
+      // externalId exists as OPEN but didn't match by fields — skip as duplicate
+      duplicates++;
+    }
+  }
+
+  if (newRows.length === 0 && closeRows.length === 0) {
+    return { imported: 0, closed: 0, duplicates, pending: parsed.pending, errors };
   }
 
   // Calculate total PnL for capital adjustment
-  const totalPnl = validRows.reduce((sum, r) => sum + r.pnl, 0);
+  const totalPnl =
+    newRows.reduce((sum, r) => sum + r.pnl, 0) +
+    closeRows.reduce((sum, c) => sum + c.row.pnl, 0);
 
-  // Atomic transaction: create all trades + positions + update capital
+  // Atomic transaction
   await prisma.$transaction(async (tx) => {
-    for (const row of validRows) {
+    // 1. Create new trades
+    for (const row of newRows) {
       await tx.trade.create({
         data: {
           accountId,
@@ -114,17 +166,93 @@ export async function importSimplefxTrades(
               pnl: row.pnl,
               closePrice: row.closePrice,
               closedAt: row.closedAt,
+              externalId: row.externalId,
             },
           },
         },
       });
     }
 
-    // Adjust account capital
-    await tx.account.update({
-      where: { id: accountId },
-      data: { currentCapital: { increment: totalPnl } },
-    });
+    // 2. Close/partial-close open trades
+    for (const { row, openTradeId, openTradeSize } of closeRows) {
+      const isPartial = openTradeSize > 0 && row.size < openTradeSize;
+
+      if (isPartial) {
+        const partialPct = (row.size / openTradeSize) * 100;
+        const remaining = Math.round((openTradeSize - row.size) * 1e8) / 1e8;
+
+        // Count existing positions to label the new one
+        const posCount = await tx.position.count({ where: { tradeId: openTradeId } });
+
+        // Create partial position
+        await tx.position.create({
+          data: {
+            tradeId: openTradeId,
+            label: `Posicion ${posCount + 1}`,
+            status: "PARTIAL",
+            size: row.size,
+            pnl: row.pnl,
+            closePrice: row.closePrice,
+            closedAt: row.closedAt,
+            isPartial: true,
+            partialPct,
+            externalId: row.externalId,
+          },
+        });
+
+        // Reduce trade size
+        await tx.trade.update({
+          where: { id: openTradeId },
+          data: { size: remaining },
+        });
+      } else {
+        // Full close — find the first OPEN position and update it with externalId
+        const openPosition = await tx.position.findFirst({
+          where: { tradeId: openTradeId, status: "OPEN" },
+        });
+
+        if (openPosition) {
+          await tx.position.update({
+            where: { id: openPosition.id },
+            data: {
+              status: row.positionStatus,
+              pnl: row.pnl,
+              size: row.size,
+              closePrice: row.closePrice,
+              closedAt: row.closedAt,
+              externalId: row.externalId,
+            },
+          });
+
+          // Close any remaining OPEN positions (shouldn't have any normally)
+          await tx.position.updateMany({
+            where: { tradeId: openTradeId, status: "OPEN" },
+            data: {
+              status: row.positionStatus,
+              pnl: 0,
+              closedAt: row.closedAt,
+            },
+          });
+        }
+
+        // Close the trade
+        await tx.trade.update({
+          where: { id: openTradeId },
+          data: {
+            status: "CLOSED",
+            closedAt: row.closedAt,
+          },
+        });
+      }
+    }
+
+    // 3. Adjust account capital
+    if (totalPnl !== 0) {
+      await tx.account.update({
+        where: { id: accountId },
+        data: { currentCapital: { increment: totalPnl } },
+      });
+    }
   });
 
   revalidatePath("/");
@@ -132,7 +260,8 @@ export async function importSimplefxTrades(
   revalidatePath("/calendar");
 
   return {
-    imported: validRows.length,
+    imported: newRows.length,
+    closed: closeRows.length,
     duplicates,
     pending: parsed.pending,
     errors,
