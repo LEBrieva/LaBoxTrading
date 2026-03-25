@@ -5,20 +5,20 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions/auth";
 
 const navItems = [
-  { title: "Dashboard", href: "/" },
-  { title: "Trades", href: "/trades" },
-  { title: "Movimientos", href: "/movimientos" },
-  { title: "Calendario", href: "/calendar" },
-  { title: "Cuentas", href: "/accounts" },
-  { title: "Estrategias", href: "/strategies" },
-  { title: "Config", href: "/settings" },
+  { title: "Dashboard", href: "/", tour: "nav-dashboard" },
+  { title: "Trades", href: "/trades", tour: "nav-trades" },
+  { title: "Movimientos", href: "/movimientos", tour: "nav-movimientos" },
+  { title: "Calendario", href: "/calendar", tour: "nav-calendario" },
+  { title: "Cuentas", href: "/accounts", tour: "nav-cuentas" },
+  { title: "Estrategias", href: "/strategies", tour: "nav-estrategias" },
+  { title: "Config", href: "/settings", tour: "nav-config" },
 ];
 
 export function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden md:flex items-center px-8 py-2.5 border-t border-[#252833]">
+    <nav className="hidden md:flex items-center px-8 py-2.5 border-t border-[#252833]" data-tour="nav-links">
       <div className="flex-1 flex justify-center gap-0.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -26,6 +26,7 @@ export function NavLinks() {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.tour}
               className={`relative px-4 py-2 text-[11px] uppercase tracking-[2px] font-semibold transition-colors ${
                 isActive
                   ? "text-[#5eead4]"

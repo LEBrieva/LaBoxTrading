@@ -7,7 +7,7 @@ export function HeaderStats({ currency }: { currency: string }) {
   const { stats, loading } = useStats();
 
   return (
-    <>
+    <div data-tour="header-stats" className="flex items-center gap-4">
       <div className="text-right">
         <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">P&L</div>
         <div
@@ -37,6 +37,6 @@ export function HeaderStats({ currency }: { currency: string }) {
           inicio: <span className="s">{formatCurrency(stats.initialCapital)}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

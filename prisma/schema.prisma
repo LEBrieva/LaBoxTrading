@@ -12,8 +12,9 @@ model User {
   email     String    @unique
   name      String?
   authId    String    @unique @map("auth_id")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  accounts       Account[]
+  createdAt             DateTime       @default(now()) @map("created_at")
+  hasCompletedOnboarding Boolean       @default(false) @map("has_completed_onboarding")
+  accounts              Account[]
   strategies     Strategy[]
   journalEntries JournalEntry[]
 

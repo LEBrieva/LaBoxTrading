@@ -29,6 +29,14 @@ export async function getUser() {
   return dbUser;
 }
 
+export async function completeOnboarding() {
+  const user = await getUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { hasCompletedOnboarding: true },
+  });
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

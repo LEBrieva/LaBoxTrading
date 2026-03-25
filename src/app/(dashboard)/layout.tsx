@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { getAccounts } from "@/lib/actions/accounts";
+import { getUser } from "@/lib/actions/auth";
 import { getOpenTradePairs, getSymbolDecimalsMap } from "@/lib/actions/symbols";
 import { AccountSwitcherWrapper } from "@/components/layout/account-switcher-wrapper";
 import { NavLinks } from "@/components/layout/nav-links";
@@ -10,8 +11,10 @@ import { HeaderStats } from "@/components/layout/header-stats";
 import { ConnectionStatus } from "@/components/layout/connection-status";
 import { PrivacyProvider } from "@/contexts/privacy-context";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
+import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await getUser();
   const accounts = await getAccounts();
   const cookieStore = await cookies();
   const activeAccountId = cookieStore.get("activeAccountId")?.value || accounts[0]?.id || "";
@@ -43,10 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     className="text-xl font-bold tracking-wider text-[#d4d4d8] uppercase"
                     style={{ textShadow: "0 0 30px rgba(94,234,212,0.08)" }}
                   >
-                    La Caja
-                  </span>
-                  <span className="hidden md:inline font-mono text-[10px] text-[#5eead4] tracking-[3px] uppercase opacity-60">
-                    Trading Tracker
+                    La Trading Box
                   </span>
                   <ConnectionStatus />
                 </div>
@@ -60,6 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </header>
             <main className="pb-20 md:pb-0">{children}</main>
             <MobileBottomNav />
+            <OnboardingWrapper showTour={!user.hasCompletedOnboarding} />
           </div>
         </StatsProviderWrapper>
       </PriceProviderWrapper>

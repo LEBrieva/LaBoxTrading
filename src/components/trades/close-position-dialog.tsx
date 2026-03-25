@@ -343,7 +343,7 @@ export function ClosePositionDialog({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={result === "PARTIAL" ? "grid grid-cols-2 gap-3" : ""}>
                 <div className="space-y-1.5">
                   <label className={labelClass}>Fecha de cierre</label>
                   <input
@@ -354,17 +354,19 @@ export function ClosePositionDialog({
                   />
                   <p className="text-[9px] text-[#52525b] font-mono">Vacio = fecha actual</p>
                 </div>
-                <div className="space-y-1.5">
-                  <label className={labelClass}>Broker ID</label>
-                  <input
-                    className={inputClass}
-                    type="text"
-                    value={brokerId}
-                    onChange={(e) => setBrokerId(e.target.value)}
-                    placeholder="Opcional"
-                  />
-                  <p className="text-[9px] text-[#52525b] font-mono">ID de la orden de cierre</p>
-                </div>
+                {result === "PARTIAL" && (
+                  <div className="space-y-1.5">
+                    <label className={labelClass}>Broker ID</label>
+                    <input
+                      className={inputClass}
+                      type="text"
+                      value={brokerId}
+                      onChange={(e) => setBrokerId(e.target.value)}
+                      placeholder="Opcional"
+                    />
+                    <p className="text-[9px] text-[#52525b] font-mono">ID de la orden de cierre</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2 border-t border-[#252833]">
