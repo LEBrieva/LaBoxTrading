@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data: *.supabase.co",
               "font-src 'self'",
-              "connect-src 'self' *.supabase.co wss://web-quotes-core.simplefx.com wss://ws.bitget.com https://simplefx.com https://*.sentry.io",
+              "connect-src 'self' *.supabase.co wss://web-quotes-core.simplefx.com wss://ws.bitget.com https://simplefx.com https://candles-core.simplefx.com https://*.sentry.io",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

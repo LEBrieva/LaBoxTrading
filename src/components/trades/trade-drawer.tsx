@@ -11,6 +11,10 @@ import { uploadTradeScreenshot } from "@/lib/upload-screenshot";
 import { createClient } from "@/lib/supabase/client";
 import { LiveCloseButton } from "./live-close-button";
 import { TradeChecklist } from "./trade-checklist";
+import { ChartDrawer } from "./chart-drawer";
+import { getCandles } from "@/lib/actions/candles";
+import type { Candle } from "@/lib/actions/candles";
+import { usePrices } from "@/contexts/price-context";
 import { useToast } from "@/components/ui/toast";
 
 interface Position {
@@ -101,12 +105,14 @@ export function TradeDrawer({
 }) {
   const { refreshStats } = useStats();
   const { show: toast } = useToast();
+  const { decimalsMap } = usePrices();
   const totalPnl = trade.positions.reduce((sum, p) => sum + p.pnl, 0);
   const openPositions = trade.positions.filter((p) => p.status === "OPEN");
   const isLong = trade.direction === "LONG";
   const firstClosed = trade.positions[0]?.status;
   const suggestBE = firstClosed === "TP" && openPositions.length > 0;
   const isOpen = trade.status === "OPEN";
+  const pairDecimals = decimalsMap[trade.pair] ?? 2;
   const dec = 2;
 
   const [tab, setTab] = useState<Tab>("info");
@@ -119,6 +125,8 @@ export function TradeDrawer({
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
+  const [preloadedCandles, setPreloadedCandles] = useState<Candle[] | null>(null);
 
   // Lazy-loaded data
   const [images, setImages] = useState<TradeImage[]>([]);
@@ -155,10 +163,15 @@ export function TradeDrawer({
       setTab("info");
       setEditing(false);
       setConfirmDelete(false);
+      setChartOpen(false);
+      setPreloadedCandles(null);
       setImagesLoaded(false);
       setChecklistLoaded(false);
       setImages([]);
       setFullChecklist(null);
+
+      // Preload candles in background
+      getCandles(trade.pair, 300).then(setPreloadedCandles).catch(console.error);
 
       // Load images and checklist in background
       getTradeImages(trade.id).then((imgs) => {
@@ -301,8 +314,18 @@ export function TradeDrawer({
   const imageCount = imagesLoaded ? images.length : trade._count.images;
 
   return (
-    <div className="fixed inset-0 z-[1000] h-[100dvh]" onClick={onClose}>
+    <div className="fixed inset-0 z-[1000] h-[100dvh]" onClick={() => { setChartOpen(false); onClose(); }}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {chartOpen && (
+        <ChartDrawer
+          trade={trade}
+          preloadedCandles={preloadedCandles}
+          decimals={pairDecimals}
+          onTradeUpdated={onTradeUpdated}
+          onClose={() => setChartOpen(false)}
+        />
+      )}
 
       <div
         className="absolute top-0 right-0 bottom-0 w-full md:max-w-[440px] bg-[#08090c] border-l border-[#252833] flex flex-col animate-in slide-in-from-right duration-200"
@@ -333,6 +356,21 @@ export function TradeDrawer({
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setChartOpen((v) => !v)}
+                className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                  chartOpen
+                    ? "text-[#5eead4] bg-[#5eead4]/10"
+                    : "text-[#71717a] hover:text-[#5eead4] hover:bg-[#1a1d27]"
+                }`}
+                title="Ver gráfico"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              </button>
               {isOpen && tab === "info" && !editing && (
                 <button
                   onClick={() => setEditing(true)}
