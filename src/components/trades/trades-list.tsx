@@ -566,7 +566,36 @@ export function TradesList({
       <TradesSummary stats={stats} openTrades={openTrades} statusFilter={statusFilter} />
 
       {/* Results */}
-      {trades.length === 0 && !isPending ? (
+      {trades.length === 0 && isPending ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-[#0e1015] border border-[#252833] rounded-xl p-4 md:p-5 space-y-3 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-16 bg-[#1a1d27] rounded" />
+                  <div className="h-3 w-10 bg-[#1a1d27] rounded" />
+                </div>
+                <div className="h-3 w-12 bg-[#1a1d27] rounded" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <div className="h-2 w-8 bg-[#1a1d27] rounded" />
+                  <div className="h-3.5 w-14 bg-[#1a1d27] rounded" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2 w-8 bg-[#1a1d27] rounded" />
+                  <div className="h-3.5 w-14 bg-[#1a1d27] rounded" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2 w-8 bg-[#1a1d27] rounded" />
+                  <div className="h-3.5 w-14 bg-[#1a1d27] rounded" />
+                </div>
+              </div>
+              <div className="h-8 w-full bg-[#1a1d27] rounded-lg" />
+            </div>
+          ))}
+        </div>
+      ) : trades.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
           <span className="text-2xl text-[#252833]">◈</span>
           <p className="text-[12px] text-[#52525b] tracking-[2px] uppercase">
@@ -574,7 +603,7 @@ export function TradesList({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 items-start transition-opacity duration-200 ${isPending ? "opacity-40 pointer-events-none" : ""}`}>
           {trades.map((trade) => (
             <TradeCard
               key={trade.id}

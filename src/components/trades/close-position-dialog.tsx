@@ -89,7 +89,7 @@ export function ClosePositionDialog({
   const { show: toast } = useToast();
 
   const canCalcPnl = trade && trade.entry != null && trade.size != null;
-  const cs = trade ? (contractSizeMap[trade.pair] ?? 1) : 1;
+  const cs = trade?.pair ? (contractSizeMap[trade.pair] ?? 1) : 1;
 
   function calcPnl(price: number, pctOverride?: number): string {
     if (!trade || trade.entry == null || trade.size == null) return "";
