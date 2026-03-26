@@ -17,8 +17,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "La Caja — Trading Journal",
-  description: "Journal de trading para scalping con interés compuesto",
+  title: "La Trading Box — Trading Journal",
+  description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas, seguí tu equity curve y mejorá tu rendimiento.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://latradingbox.com"),
+  openGraph: {
+    title: "La Trading Box",
+    description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas y mejorá tu rendimiento.",
+    type: "website",
+    locale: "es_AR",
+    siteName: "La Trading Box",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "La Trading Box",
+    description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas y mejorá tu rendimiento.",
+  },
+  icons: { icon: "/favicon.ico" },
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({

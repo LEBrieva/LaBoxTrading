@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#08090c"/>
+  <rect x="24" y="24" width="464" height="464" rx="80" fill="none" stroke="#252833" stroke-width="2"/>
+  <text x="256" y="300" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="240" fill="#5eead4">TB</text>
+</svg>
