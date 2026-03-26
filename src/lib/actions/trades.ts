@@ -133,6 +133,7 @@ export async function getTradesPaginated(accountId: string, filters?: {
   result?: "TP" | "SL" | "BE";
   pair?: string;
   strategyId?: string;
+  externalId?: string;
   from?: string;
   to?: string;
   cursor?: string;
@@ -152,6 +153,12 @@ export async function getTradesPaginated(accountId: string, filters?: {
     ...(filters?.pair && { pair: filters.pair }),
     ...(filters?.strategyId && {
       checklist: { strategyId: filters.strategyId },
+    }),
+    ...(filters?.externalId && {
+      OR: [
+        { externalId: { contains: filters.externalId, mode: "insensitive" as const } },
+        { positions: { some: { externalId: { contains: filters.externalId, mode: "insensitive" as const } } } },
+      ],
     }),
     ...(filters?.from && { openedAt: { gte: new Date(filters.from) } }),
     ...(filters?.to && {

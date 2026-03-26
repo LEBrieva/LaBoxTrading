@@ -88,6 +88,9 @@ export function TradesList({
   const [resultFilter, setResultFilter] = useState<ResultFilter>("ALL");
   const [pairFilter, setPairFilter] = useState("");
   const [strategyFilter, setStrategyFilter] = useState("");
+  const [externalIdFilter, setExternalIdFilter] = useState("");
+  const [externalIdInput, setExternalIdInput] = useState("");
+  const externalIdTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
 
@@ -246,7 +249,7 @@ export function TradesList({
       setStats(initialStats);
     } else {
       startTransition(async () => {
-        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
+        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo);
         setTrades(result.trades);
         setHasMore(result.hasMore);
         setStats(result.stats);
@@ -259,15 +262,16 @@ export function TradesList({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLoadingMore = useRef(false);
 
-  const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || strategyFilter || dateFrom || dateTo;
-  const prevFiltersRef = useRef({ statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo });
+  const hasFilters = statusFilter !== "ALL" || resultFilter !== "ALL" || pairFilter || strategyFilter || externalIdFilter || dateFrom || dateTo;
+  const prevFiltersRef = useRef({ statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo });
 
-  const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, strategy: string, from: string, to: string) => {
+  const fetchTrades = useCallback(async (cursor: string | undefined, status: StatusFilter, resultF: ResultFilter, pair: string, strategy: string, extId: string, from: string, to: string) => {
     const result = await getTradesPaginated(accountId, {
       status: status === "ALL" ? undefined : status,
       result: resultF === "ALL" ? undefined : resultF,
       pair: pair || undefined,
       strategyId: strategy || undefined,
+      externalId: extId || undefined,
       from: from || undefined,
       to: to || undefined,
       cursor,
@@ -342,20 +346,21 @@ export function TradesList({
       prev.resultFilter !== resultFilter ||
       prev.pairFilter !== pairFilter ||
       prev.strategyFilter !== strategyFilter ||
+      prev.externalIdFilter !== externalIdFilter ||
       prev.dateFrom !== dateFrom ||
       prev.dateTo !== dateTo;
 
-    prevFiltersRef.current = { statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo };
+    prevFiltersRef.current = { statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo };
 
     if (!changed) return;
 
     startTransition(async () => {
-      const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
+      const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo);
       setTrades(result.trades);
       setHasMore(result.hasMore);
       setStats(result.stats);
     });
-  }, [statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo, fetchTrades]);
+  }, [statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo, fetchTrades]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -368,7 +373,7 @@ export function TradesList({
           isLoadingMore.current = true;
           startTransition(async () => {
             const lastId = trades[trades.length - 1]?.id;
-            const result = await fetchTrades(lastId, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo);
+            const result = await fetchTrades(lastId, statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo);
             setTrades((prev) => [...prev, ...result.trades]);
             setHasMore(result.hasMore);
             isLoadingMore.current = false;
@@ -380,7 +385,7 @@ export function TradesList({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, strategyFilter, dateFrom, dateTo, fetchTrades]);
+  }, [hasMore, isPending, trades.length, statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo, fetchTrades]);
 
   const openTrades = useMemo(
     () => trades.filter((t) => t.status === "OPEN"),
@@ -476,6 +481,20 @@ export function TradesList({
           </select>
         )}
 
+        {/* Broker ID search */}
+        <input
+          type="text"
+          value={externalIdInput}
+          onChange={(e) => {
+            const val = e.target.value;
+            setExternalIdInput(val);
+            if (externalIdTimerRef.current) clearTimeout(externalIdTimerRef.current);
+            externalIdTimerRef.current = setTimeout(() => setExternalIdFilter(val.trim()), 400);
+          }}
+          placeholder="Buscar por Broker ID"
+          className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] placeholder:text-[#52525b] w-36"
+        />
+
         {/* Separator */}
         <div className="hidden md:block w-px h-6 bg-[#252833]" />
 
@@ -522,6 +541,8 @@ export function TradesList({
               setResultFilter("ALL");
               setPairFilter("");
               setStrategyFilter("");
+              setExternalIdFilter("");
+              setExternalIdInput("");
               setDateFrom("");
               setDateTo("");
             }}
