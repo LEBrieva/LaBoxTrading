@@ -39,6 +39,7 @@ export function ImportCsvDialog({ accountId }: ImportCsvDialogProps) {
       const res = await importSimplefxTrades(accountId, text);
       setResult(res);
       if (res.imported > 0 || res.closed > 0) {
+        window.dispatchEvent(new CustomEvent("import-complete"));
         router.refresh();
       }
     } catch (err) {

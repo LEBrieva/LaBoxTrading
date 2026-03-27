@@ -257,6 +257,7 @@ export function TradesList({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTrades, initialHasMore, initialStats]);
+
   const [isPending, startTransition] = useTransition();
   const [exporting, setExporting] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -278,6 +279,21 @@ export function TradesList({
     });
     return result;
   }, [accountId]);
+
+  // Full refresh after CSV import (trades may have changed status/size without new IDs)
+  useEffect(() => {
+    const handler = () => {
+      startTransition(async () => {
+        const result = await fetchTrades(undefined, statusFilter, resultFilter, pairFilter, strategyFilter, externalIdFilter, dateFrom, dateTo);
+        setTrades(result.trades);
+        setHasMore(result.hasMore);
+        setStats(result.stats);
+      });
+    };
+    window.addEventListener("import-complete", handler);
+    return () => window.removeEventListener("import-complete", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchTrades]);
 
   async function handleExport() {
     setExporting(true);

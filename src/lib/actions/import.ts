@@ -80,7 +80,7 @@ export async function importSimplefxTrades(
   // Filter rows into: new trades, and rows that could close an open trade
   let duplicates = 0;
   const newRows: ParsedRow[] = [];
-  const closeRows: { row: ParsedRow; openTradeId: string; openTradeSize: number }[] = [];
+  const closeRows: { row: ParsedRow; openTradeId: string; openTradeSize: number; syncOpenedAt: boolean }[] = [];
   const runningSizeByTrade = new Map<string, number>();
 
   for (const row of parsed.rows) {
@@ -104,27 +104,45 @@ export async function importSimplefxTrades(
       continue;
     }
 
-    // Try to match with an open trade by symbol + direction + entry + openedAt
-    const matchedTrade = openTrades.find((t) =>
+    // Try to match with an open trade:
+    // 1. By externalId (most reliable — same broker order)
+    // 2. By symbol + direction + entry + same day + prefer matching size
+    const sameDay = (a: Date, b: Date) =>
+      a.getUTCFullYear() === b.getUTCFullYear() &&
+      a.getUTCMonth() === b.getUTCMonth() &&
+      a.getUTCDate() === b.getUTCDate();
+
+    const fieldCandidates = openTrades.filter((t) =>
       t.pair === row.symbol.toUpperCase() &&
       t.direction === row.direction &&
       t.entry !== null && Math.abs(t.entry - row.entry) < 0.000001 &&
-      t.openedAt.getTime() === row.openedAt.getTime()
+      sameDay(t.openedAt, row.openedAt)
     );
 
+    // Prefer candidate with matching size (helps when 2 identical trades exist)
+    const fieldMatch =
+      fieldCandidates.find((t) => {
+        const sz = runningSizeByTrade.get(t.id) ?? (t.size ?? 0);
+        return Math.abs(sz - row.size) < 0.000001;
+      }) ?? fieldCandidates[0] ?? null;
+
+    const matchedTrade =
+      openTrades.find((t) => t.externalId === row.externalId) ?? fieldMatch;
+
     if (matchedTrade) {
+      const matchedByExtId = matchedTrade.externalId === row.externalId;
       // Use running size to handle multiple closes for the same trade
       const currentSize = runningSizeByTrade.get(matchedTrade.id) ?? (matchedTrade.size ?? 0);
       closeRows.push({
         row,
         openTradeId: matchedTrade.id,
         openTradeSize: currentSize,
+        syncOpenedAt: !matchedByExtId, // sync openedAt when matched by fields (manual trade, imprecise time)
       });
       runningSizeByTrade.set(matchedTrade.id, Math.round((currentSize - row.size) * 1e8) / 1e8);
     } else if (!existingTradeMap.has(row.externalId)) {
       newRows.push(row);
     } else {
-      // externalId exists as OPEN but didn't match by fields — skip as duplicate
       duplicates++;
     }
   }
@@ -174,8 +192,14 @@ export async function importSimplefxTrades(
     }
 
     // 2. Close/partial-close open trades
-    for (const { row, openTradeId, openTradeSize } of closeRows) {
+    for (const { row, openTradeId, openTradeSize, syncOpenedAt } of closeRows) {
       const isPartial = openTradeSize > 0 && row.size < openTradeSize;
+
+      // Sync trade data from broker CSV (more accurate times, SL/TP)
+      const tradeSync: Record<string, unknown> = {};
+      if (syncOpenedAt) tradeSync.openedAt = row.openedAt;
+      if (row.stopLoss != null) tradeSync.stopLoss = row.stopLoss;
+      if (row.takeProfit != null) tradeSync.takeProfit = row.takeProfit;
 
       if (isPartial) {
         const partialPct = (row.size / openTradeSize) * 100;
@@ -200,13 +224,13 @@ export async function importSimplefxTrades(
           },
         });
 
-        // Reduce trade size
+        // Reduce trade size + sync broker data
         await tx.trade.update({
           where: { id: openTradeId },
-          data: { size: remaining },
+          data: { size: remaining, ...tradeSync },
         });
       } else {
-        // Full close — find the first OPEN position and update it with externalId
+        // Full close — find the first OPEN position and update it
         const openPosition = await tx.position.findFirst({
           where: { tradeId: openTradeId, status: "OPEN" },
         });
@@ -224,7 +248,7 @@ export async function importSimplefxTrades(
             },
           });
 
-          // Close any remaining OPEN positions (shouldn't have any normally)
+          // Close any remaining OPEN positions
           await tx.position.updateMany({
             where: { tradeId: openTradeId, status: "OPEN" },
             data: {
@@ -235,12 +259,13 @@ export async function importSimplefxTrades(
           });
         }
 
-        // Close the trade
+        // Close the trade + sync broker data
         await tx.trade.update({
           where: { id: openTradeId },
           data: {
             status: "CLOSED",
             closedAt: row.closedAt,
+            ...tradeSync,
           },
         });
       }
