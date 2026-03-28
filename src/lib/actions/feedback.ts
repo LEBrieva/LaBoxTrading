@@ -8,7 +8,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FEEDBACK_EMAIL = process.env.FEEDBACK_EMAIL || "latradingbox@gmail.com";
-const MIN_ACCOUNT_AGE_DAYS = 7;
+const MIN_ACCOUNT_AGE_DAYS = 2;
 const MIN_TRADES = 10;
 
 interface FeedbackEligibility {
@@ -27,7 +27,7 @@ export async function checkFeedbackEligibility(): Promise<FeedbackEligibility> {
     const remaining = MIN_ACCOUNT_AGE_DAYS - daysSinceCreation;
     return {
       eligible: false,
-      reason: `Tu cuenta debe tener al menos 1 semana. Faltan ${remaining} día${remaining === 1 ? "" : "s"}.`,
+      reason: `Tu cuenta debe tener al menos 2 días. Faltan ${remaining} día${remaining === 1 ? "" : "s"}.`,
     };
   }
 
@@ -90,7 +90,7 @@ export async function sendFeedback(message: string): Promise<{ success: boolean;
   // Send email
   try {
     await resend.emails.send({
-      from: "La Trading Box <noreply@latradingbox.com>",
+      from: "La Trading Box <noreply@tradingbox.app>",
       to: FEEDBACK_EMAIL,
       subject: `Feedback de ${user.email}`,
       text: `De: ${user.email}\nUsuario: ${user.name || "Sin nombre"}\nID: ${user.id}\nFecha: ${new Date().toISOString()}\n\n---\n\n${trimmed}`,
