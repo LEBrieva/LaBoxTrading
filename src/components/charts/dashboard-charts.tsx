@@ -199,7 +199,10 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
         </div>
       </div>
 
-      {/* Breakdown Table */}
+      {/* Breakdown Section */}
+      <BreakdownSection trades={breakdownTrades} />
+
+      {/* Resumen Diario */}
       <div className="bg-[#0e1015] border border-[#252833] rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 md:px-5 md:py-3 border-b border-[#252833]">
           <h2 className="text-[10px] uppercase tracking-[2px] text-[#71717a] font-semibold">
@@ -253,9 +256,6 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
           )}
         </div>
       </div>
-
-      {/* Breakdown Section */}
-      <BreakdownSection trades={breakdownTrades} />
     </div>
   );
 }

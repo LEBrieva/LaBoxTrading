@@ -17,6 +17,7 @@ model User {
   accounts              Account[]
   strategies     Strategy[]
   journalEntries JournalEntry[]
+  feedbacks      Feedback[]
 
   @@map("users")
 }
@@ -204,4 +205,15 @@ model Symbol {
 
   @@unique([name, broker])
   @@map("symbols")
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("feedbacks")
 }
