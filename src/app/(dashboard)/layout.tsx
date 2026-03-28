@@ -11,7 +11,6 @@ import { HeaderStats } from "@/components/layout/header-stats";
 import { ConnectionStatus } from "@/components/layout/connection-status";
 import { PrivacyProvider } from "@/contexts/privacy-context";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
-import { FeedbackButton } from "@/components/layout/feedback-button";
 import { DonateButton } from "@/components/layout/donate-button";
 import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper";
 
@@ -56,7 +55,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <div className="flex items-center gap-4 md:gap-6">
                   {account && <HeaderStats currency={account.currency} />}
                   <DonateButton />
-                  <FeedbackButton />
                   <PrivacyToggle />
                   <AccountSwitcherWrapper accounts={accounts} activeAccountId={activeAccountId} />
                 </div>
