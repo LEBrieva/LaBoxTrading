@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "La Trading Box — Trading Journal",
   description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas, seguí tu equity curve y mejorá tu rendimiento.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://latradingbox.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://tradingbox.app"),
   openGraph: {
     title: "La Trading Box",
     description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas y mejorá tu rendimiento.",
