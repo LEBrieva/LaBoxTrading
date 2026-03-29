@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const inputClass =
@@ -19,6 +20,8 @@ const passwordRules = [
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -92,16 +95,26 @@ export default function UpdatePasswordPage() {
                 <label htmlFor="password" className={labelClass}>
                   Nueva contrasena
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Minimo 8 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoFocus
-                  className={inputClass}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Minimo 8 caracteres"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoFocus
+                    className={`${inputClass} pr-10`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-[#71717a] transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
                 {password.length > 0 && (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
                     {passwordRules.map((rule, i) => (
@@ -121,19 +134,29 @@ export default function UpdatePasswordPage() {
                 <label htmlFor="confirmPassword" className={labelClass}>
                   Confirmar contrasena
                 </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Repeti tu contrasena"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className={`${inputClass} ${
-                    confirmPassword.length > 0 && !passwordsMatch
-                      ? "border-[#f87171]/50 focus:border-[#f87171]"
-                      : ""
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Repeti tu contrasena"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className={`${inputClass} pr-10 ${
+                      confirmPassword.length > 0 && !passwordsMatch
+                        ? "border-[#f87171]/50 focus:border-[#f87171]"
+                        : ""
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#52525b] hover:text-[#71717a] transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
                 {confirmPassword.length > 0 && !passwordsMatch && (
                   <p className="text-[10px] text-[#f87171] font-mono mt-1">
                     Las contrasenas no coinciden
