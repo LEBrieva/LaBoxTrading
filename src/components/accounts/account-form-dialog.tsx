@@ -18,17 +18,19 @@ export function AccountFormDialog() {
   const [targetCapital, setTargetCapital] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [walletNetwork, setWalletNetwork] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setLoading(true);
     try {
       await createAccount({
         name,
         broker: broker as "SIMPLEFX" | "BITGET",
-        initialCapital: parseFloat(initialCapital),
-        targetCapital: parseFloat(targetCapital),
+        initialCapital: initialCapital === "" ? 0 : parseFloat(initialCapital),
+        targetCapital: targetCapital === "" ? 0 : parseFloat(targetCapital),
         walletAddress: walletAddress || undefined,
         walletNetwork: walletNetwork || undefined,
       });
@@ -41,7 +43,7 @@ export function AccountFormDialog() {
       setWalletNetwork("");
       router.refresh();
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "Error al crear la cuenta");
     } finally {
       setLoading(false);
     }
@@ -116,11 +118,11 @@ export function AccountFormDialog() {
                     className={inputClass}
                     type="number"
                     step="0.01"
-                    placeholder="1000.00"
+                    placeholder="0.00"
                     value={initialCapital}
                     onChange={(e) => setInitialCapital(e.target.value)}
-                    required
                   />
+                  <p className="text-[10px] text-[#52525b] font-mono">Si no lo recordás, dejalo en 0</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClass}>Capital Objetivo (USD)</label>
@@ -128,13 +130,15 @@ export function AccountFormDialog() {
                     className={inputClass}
                     type="number"
                     step="0.01"
-                    placeholder="10000.00"
+                    placeholder="0.00"
                     value={targetCapital}
                     onChange={(e) => setTargetCapital(e.target.value)}
-                    required
                   />
                 </div>
               </div>
+              {error && (
+                <p className="text-sm text-[#f87171] font-mono">{error}</p>
+              )}
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
