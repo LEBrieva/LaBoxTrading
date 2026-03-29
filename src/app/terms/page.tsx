@@ -16,10 +16,10 @@ export default function TermsPage() {
         <div className="bg-[#0e1015] border border-[#252833] rounded-xl p-6 md:p-8">
           <div className="border-b border-[#252833] pb-4 mb-6">
             <h2 className="text-xl font-extrabold text-[#d4d4d8]">
-              Terminos y Condiciones
+              Términos y Condiciones
             </h2>
             <p className="text-[11px] text-[#52525b] font-mono mt-1">
-              Ultima actualizacion: Marzo 2026
+              Última actualización: Marzo 2026
             </p>
           </div>
 

@@ -99,7 +99,7 @@ export function ImportCsvDialog({ accountId }: ImportCsvDialogProps) {
             {/* Header */}
             <div className="px-6 py-4 border-b border-[#252833]">
               <span className="text-base font-extrabold tracking-tight text-[#d4d4d8]">
-                Resultado de importacion
+                Resultado de importación
               </span>
             </div>
 
@@ -147,7 +147,7 @@ export function ImportCsvDialog({ accountId }: ImportCsvDialogProps) {
                       >
                         {err.line > 0 && (
                           <span className="text-[#f87171] mr-1">
-                            Linea {err.line}:
+                            Línea {err.line}:
                           </span>
                         )}
                         <span>{err.reason}</span>

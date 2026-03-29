@@ -67,7 +67,7 @@ export function DonateButton() {
 
             <div className="p-6 space-y-4">
               <p className="text-[12px] text-[#a1a1aa] leading-relaxed">
-                Si la app te resulta util, podes dar una mano con una donacion voluntaria.
+                Si la app te resulta útil, podés dar una mano con una donación voluntaria.
               </p>
 
               {/* Network selector */}

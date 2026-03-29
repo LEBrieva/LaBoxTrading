@@ -38,15 +38,15 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             element: "[data-tour='header-stats']",
             popover: {
               title: "Tu rendimiento",
-              description: "Aca ves tu P&L total y capital actual en tiempo real. Se actualiza con cada trade que registres.",
+              description: "Acá ves tu P&L total y capital actual en tiempo real. Se actualiza con cada trade que registres.",
               side: "bottom" as const,
             },
           },
           {
             element: "[data-tour='nav-links']",
             popover: {
-              title: "Navegacion",
-              description: "Desde aca podes moverte entre las distintas secciones de la app.",
+              title: "Navegación",
+              description: "Desde acá podés moverte entre las distintas secciones de la app.",
               side: "bottom" as const,
             },
           },
@@ -54,7 +54,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             element: "[data-tour='nav-cuentas']",
             popover: {
               title: "Cuentas",
-              description: "Lo primero que vas a necesitar es crear una cuenta de trading. Aca podes configurar tu broker, capital inicial y objetivo.",
+              description: "Lo primero que vas a necesitar es crear una cuenta de trading. Acá podés configurar tu broker, capital inicial y objetivo.",
               side: "bottom" as const,
             },
           },
@@ -62,7 +62,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             element: "[data-tour='nav-estrategias']",
             popover: {
               title: "Estrategias",
-              description: "Defini tus estrategias de trading con checklists personalizados. Despues podes asociarlas a cada trade.",
+              description: "Definí tus estrategias de trading con checklists personalizados. Después podés asociarlas a cada trade.",
               side: "bottom" as const,
             },
           },
@@ -70,7 +70,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             element: "[data-tour='nav-trades']",
             popover: {
               title: "Trades",
-              description: "Registra tus operaciones con todos los detalles: par, entrada, SL, TP, tamano. Podes asociar una estrategia directamente al crear el trade.",
+              description: "Registrá tus operaciones con todos los detalles: par, entrada, SL, TP, tamaño. Podés asociar una estrategia directamente al crear el trade.",
               side: "bottom" as const,
             },
           },
@@ -78,22 +78,22 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             element: "[data-tour='nav-calendario']",
             popover: {
               title: "Calendario",
-              description: "Visualiza tu actividad por dia, lleva un diario de trading y trackea tu estado emocional.",
+              description: "Visualizá tu actividad por día, llevá un diario de trading y trackeá tu estado emocional.",
               side: "bottom" as const,
             },
           },
           {
             element: "[data-tour='nav-config']",
             popover: {
-              title: "Configuracion",
-              description: "Personaliza tu experiencia. Y si te gusta la app, desde aca podes apoyar el proyecto con una donacion.",
+              title: "Configuración",
+              description: "Personalizá tu experiencia. Y si te gusta la app, desde acá podés apoyar el proyecto con una donación.",
               side: "bottom" as const,
             },
           },
           {
             popover: {
               title: "Listo!",
-              description: "Ya conoces lo basico. Empeza creando tu primera cuenta desde la seccion Cuentas. Exitos en tu operativa!",
+              description: "Ya conocés lo básico. Empezá creando tu primera cuenta desde la sección Cuentas. Éxitos en tu operativa!",
             },
           },
         ],

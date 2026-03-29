@@ -59,9 +59,9 @@ export function DonationSection() {
           Mantenerla online, mejorarla y agregar nuevas funciones lleva tiempo y recursos.
         </p>
         <p className="text-[13px] text-[#a1a1aa] leading-relaxed">
-          Si te resulta util y queres dar una mano, podes hacerlo con una donacion voluntaria.
+          Si te resulta útil y querés dar una mano, podés hacerlo con una donación voluntaria.
           No es obligatorio, pero se agradece mucho. Cada aporte ayuda a que el proyecto siga creciendo
-          y llegue a mas personas de la comunidad.
+          y llegue a más personas de la comunidad.
         </p>
 
         <div className="mt-4 space-y-3">

@@ -33,10 +33,10 @@ export function TermsModal({ onClose }: TermsModalProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#252833] shrink-0">
           <div>
             <h2 className="text-base font-extrabold text-[#d4d4d8]">
-              Terminos y Condiciones
+              Términos y Condiciones
             </h2>
             <p className="text-[10px] text-[#52525b] font-mono mt-0.5">
-              Ultima actualizacion: Marzo 2026
+              Última actualización: Marzo 2026
             </p>
           </div>
           <button

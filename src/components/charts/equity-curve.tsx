@@ -47,7 +47,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
       )}
       {!!deposit && deposit > 0 && (
         <p className="text-[11px] font-mono font-semibold text-[#60a5fa]">
-          +${deposit.toFixed(2)} deposito
+          +${deposit.toFixed(2)} depósito
         </p>
       )}
       {!!withdrawal && withdrawal > 0 && (

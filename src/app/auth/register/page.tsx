@@ -14,8 +14,8 @@ const labelClass =
 
 const passwordRules = [
   { test: (p: string) => p.length >= 8, label: "8 caracteres" },
-  { test: (p: string) => /[A-Z]/.test(p), label: "1 mayuscula" },
-  { test: (p: string) => /[0-9]/.test(p), label: "1 numero" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "1 mayúscula" },
+  { test: (p: string) => /[0-9]/.test(p), label: "1 número" },
   { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "1 especial (!@#...)" },
 ];
 
@@ -41,11 +41,11 @@ export default function RegisterPage() {
     setError(null);
 
     if (!allRulesPass) {
-      setError("La contrasena no cumple los requisitos");
+      setError("La contraseña no cumple los requisitos");
       return;
     }
     if (!passwordsMatch) {
-      setError("Las contrasenas no coinciden");
+      setError("Las contraseñas no coinciden");
       return;
     }
 
@@ -116,13 +116,13 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className={labelClass}>
-                Contrasena
+                Contraseña
               </label>
               <div className="relative">
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Minimo 8 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -154,13 +154,13 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="confirmPassword" className={labelClass}>
-                Confirmar contrasena
+                Confirmar contraseña
               </label>
               <div className="relative">
                 <input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Repeti tu contrasena"
+                  placeholder="Repetí tu contraseña"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               </div>
               {confirmPassword.length > 0 && !passwordsMatch && (
                 <p className="text-[10px] text-[#f87171] font-mono mt-1">
-                  Las contrasenas no coinciden
+                  Las contraseñas no coinciden
                 </p>
               )}
             </div>
@@ -199,7 +199,7 @@ export default function RegisterPage() {
                   onClick={() => setShowTerms(true)}
                   className="text-[#5eead4] hover:underline cursor-pointer"
                 >
-                  terminos y condiciones
+                  términos y condiciones
                 </button>
               </span>
             </label>
@@ -217,7 +217,7 @@ export default function RegisterPage() {
             </button>
           </form>
           <p className="mt-4 text-center text-[11px] text-[#71717a] font-mono">
-            Ya tenes cuenta?{" "}
+            Ya tenés cuenta?{" "}
             <Link
               href="/auth/login"
               className="text-[#5eead4] hover:underline"

@@ -68,7 +68,7 @@ export function parseSimplefxCsv(csvText: string): ParseResult {
   const lines = clean.split("\n").filter((l) => l.trim());
 
   if (lines.length < 2) {
-    return { rows: [], pending: 0, errors: [{ line: 1, reason: "CSV vacio o sin datos" }] };
+    return { rows: [], pending: 0, errors: [{ line: 1, reason: "CSV vacío o sin datos" }] };
   }
 
   // Validate headers
@@ -116,20 +116,20 @@ export function parseSimplefxCsv(csvText: string): ParseResult {
 
     // Validate side
     if (!VALID_SIDES.has(side)) {
-      errors.push({ line: lineNum, reason: `Lado invalido: "${parts[2].trim()}"` });
+      errors.push({ line: lineNum, reason: `Lado inválido: "${parts[2].trim()}"` });
       continue;
     }
 
     // Parse and validate fields
     const symbol = parts[0].trim();
     if (!symbol) {
-      errors.push({ line: lineNum, reason: "Simbolo vacio" });
+      errors.push({ line: lineNum, reason: "Símbolo vacío" });
       continue;
     }
 
     const externalId = parts[1].trim();
     if (!externalId || !/^\d+$/.test(externalId)) {
-      errors.push({ line: lineNum, reason: `ID de orden invalido: "${parts[1].trim()}"` });
+      errors.push({ line: lineNum, reason: `ID de orden inválido: "${parts[1].trim()}"` });
       continue;
     }
 
@@ -142,32 +142,32 @@ export function parseSimplefxCsv(csvText: string): ParseResult {
 
     const size = Number(parts[3].trim());
     if (isNaN(size) || size <= 0) {
-      errors.push({ line: lineNum, reason: `Tamano invalido: "${parts[3].trim()}"` });
+      errors.push({ line: lineNum, reason: `Tamaño inválido: "${parts[3].trim()}"` });
       continue;
     }
 
     const openedAt = parseDate(openTimeRaw);
     if (!openedAt) {
-      errors.push({ line: lineNum, reason: `Hora de apertura invalida: "${openTimeRaw}"` });
+      errors.push({ line: lineNum, reason: `Hora de apertura inválida: "${openTimeRaw}"` });
       continue;
     }
 
     const closeTimeRaw = parts[5].trim();
     const closedAt = parseDate(closeTimeRaw);
     if (!closedAt) {
-      errors.push({ line: lineNum, reason: `Hora de cierre invalida: "${closeTimeRaw}"` });
+      errors.push({ line: lineNum, reason: `Hora de cierre inválida: "${closeTimeRaw}"` });
       continue;
     }
 
     const entry = Number(parts[6].trim());
     if (isNaN(entry) || entry <= 0) {
-      errors.push({ line: lineNum, reason: `Precio de apertura invalido: "${parts[6].trim()}"` });
+      errors.push({ line: lineNum, reason: `Precio de apertura inválido: "${parts[6].trim()}"` });
       continue;
     }
 
     const closePrice = Number(parts[7].trim());
     if (isNaN(closePrice) || closePrice <= 0) {
-      errors.push({ line: lineNum, reason: `Precio de cierre invalido: "${parts[7].trim()}"` });
+      errors.push({ line: lineNum, reason: `Precio de cierre inválido: "${parts[7].trim()}"` });
       continue;
     }
 
@@ -183,7 +183,7 @@ export function parseSimplefxCsv(csvText: string): ParseResult {
     const pnlRaw = parts[parts.length - 1].trim();
     const pnl = Number(pnlRaw);
     if (isNaN(pnl)) {
-      errors.push({ line: lineNum, reason: `Ganancia invalida: "${pnlRaw}"` });
+      errors.push({ line: lineNum, reason: `Ganancia inválida: "${pnlRaw}"` });
       continue;
     }
 

@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
             LA TRADING BOX
           </h1>
           <p className="font-mono text-[10px] text-[#5eead4] opacity-60 tracking-[3px] uppercase mt-1">
-            Recuperar contrasena
+            Recuperar contraseña
           </p>
         </div>
 
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
                 Email enviado
               </p>
               <p className="text-[12px] text-[#71717a] leading-relaxed">
-                Si existe una cuenta con <span className="text-[#d4d4d8]">{email}</span>, vas a recibir un link para restablecer tu contrasena.
+                Si existe una cuenta con <span className="text-[#d4d4d8]">{email}</span>, vas a recibir un link para restablecer tu contraseña.
               </p>
               <Link
                 href="/auth/login"
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <p className="text-[12px] text-[#71717a] mb-4 leading-relaxed">
-                Ingresa tu email y te enviaremos un link para restablecer tu contrasena.
+                Ingresa tu email y te enviaremos un link para restablecer tu contraseña.
               </p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">

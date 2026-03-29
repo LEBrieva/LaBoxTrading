@@ -64,7 +64,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-[10px] uppercase tracking-[1.5px] text-[#71717a] font-semibold font-mono">
-                Contrasena
+                Contraseña
               </label>
               <div className="relative">
                 <input
@@ -103,11 +103,11 @@ export default function LoginPage() {
               href="/auth/forgot-password"
               className="text-[11px] text-[#52525b] hover:text-[#71717a] font-mono transition-colors"
             >
-              Olvidaste tu contrasena?
+              Olvidaste tu contraseña?
             </Link>
           </p>
           <p className="mt-2 text-center text-[11px] text-[#71717a] font-mono">
-            No tenes cuenta?{" "}
+            No tenés cuenta?{" "}
             <Link
               href="/auth/register"
               className="text-[#5eead4] hover:underline"
