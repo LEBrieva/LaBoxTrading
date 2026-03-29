@@ -26,11 +26,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_AR",
     siteName: "La Trading Box",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "La Trading Box" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "La Trading Box",
     description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas y mejorá tu rendimiento.",
+    images: ["/og-image.png"],
   },
   icons: { icon: "/icon.png" },
   manifest: "/manifest.webmanifest",
