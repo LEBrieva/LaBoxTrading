@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: "La Trading Box",
     description: "Tu journal de trading personal. Registrá operaciones, analizá estadísticas y mejorá tu rendimiento.",
   },
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/icon.png" },
   manifest: "/manifest.webmanifest",
 };
 
