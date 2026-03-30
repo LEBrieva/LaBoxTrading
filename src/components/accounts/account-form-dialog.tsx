@@ -118,6 +118,7 @@ export function AccountFormDialog() {
                     className={inputClass}
                     type="number"
                     step="0.01"
+                    min="0"
                     placeholder="0.00"
                     value={initialCapital}
                     onChange={(e) => setInitialCapital(e.target.value)}
@@ -130,6 +131,7 @@ export function AccountFormDialog() {
                     className={inputClass}
                     type="number"
                     step="0.01"
+                    min="0"
                     placeholder="0.00"
                     value={targetCapital}
                     onChange={(e) => setTargetCapital(e.target.value)}

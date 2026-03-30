@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createAccountSchema, updateAccountSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ZodError } from "zod/v4";
 
 export async function getAccounts() {
   const user = await getUser();
@@ -31,7 +32,15 @@ export async function createAccount(raw: {
   walletAddress?: string;
   walletNetwork?: string;
 }) {
-  const data = createAccountSchema.parse(raw);
+  let data;
+  try {
+    data = createAccountSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      throw new Error(err.issues.map((i) => i.message).join(". "));
+    }
+    throw err;
+  }
   const user = await getUser();
   checkRateLimit(user.id, "createAccount", 10, 60_000);
   const account = await prisma.account.create({

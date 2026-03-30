@@ -10,8 +10,8 @@ const dateString = z.string().refine((v) => !isNaN(Date.parse(v)), { message: "F
 export const createAccountSchema = z.object({
   name: z.string().min(1).max(100),
   broker: z.enum(["SIMPLEFX", "BITGET"]),
-  initialCapital: z.number().min(0),
-  targetCapital: z.number().min(0),
+  initialCapital: z.number().min(0, "El capital inicial no puede ser negativo"),
+  targetCapital: z.number().min(0, "El capital objetivo no puede ser negativo"),
   currency: z.string().max(10).optional(),
   walletAddress: z.string().max(200).optional(),
   walletNetwork: z.string().max(20).optional(),
