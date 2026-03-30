@@ -140,9 +140,9 @@ export function CalendarView({
                 </span>
                 <span className="font-mono text-[11px] text-[#71717a]">
                   {winDays}
-                  <span className="text-[#4ade80]">&blacktriangle;</span>
+                  <span className="text-[#4ade80]">▲</span>
                   {" "}{lossDays}
-                  <span className="text-[#f87171]">&blacktriangledown;</span>
+                  <span className="text-[#f87171]">▼</span>
                 </span>
               </div>
             )}
