@@ -14,6 +14,7 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { DonateButton } from "@/components/layout/donate-button";
 import { DiscordButton } from "@/components/layout/discord-button";
 import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper";
+import { Footer } from "@/components/layout/footer";
 import Image from "next/image";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -68,6 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <NavLinks />
             </header>
             <main className="pb-20 md:pb-0">{children}</main>
+            <Footer />
             <MobileBottomNav />
             <OnboardingWrapper showTour={!user.hasCompletedOnboarding} />
           </div>
