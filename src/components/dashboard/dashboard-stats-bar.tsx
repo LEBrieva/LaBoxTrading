@@ -44,7 +44,7 @@ export function DashboardStatsBar() {
       </div>
 
       <div className="px-4 py-3 md:px-6 md:py-4 border-b md:border-b-0 md:border-r border-[#252833]">
-        <p className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1.5 font-medium">Trades Cerrados</p>
+        <p className="text-[9px] uppercase tracking-[1.5px] md:tracking-[2px] text-[#52525b] mb-1.5 font-medium">Cerrados</p>
         <p className="font-mono text-base md:text-xl font-bold text-[#d4d4d8]">{stats.totalTrades}</p>
         <p className="font-mono text-[10px] text-[#71717a] mt-0.5">
           racha {stats.currentStreak > 0 ? "+" : ""}{stats.currentStreak}
@@ -52,7 +52,7 @@ export function DashboardStatsBar() {
       </div>
 
       <div className="px-4 py-3 md:px-6 md:py-4 border-b md:border-b-0 md:border-r border-[#252833]">
-        <p className="text-[9px] uppercase tracking-[2px] text-[#52525b] mb-1.5 font-medium">Mayor Ganancia</p>
+        <p className="text-[9px] uppercase tracking-[1.5px] md:tracking-[2px] text-[#52525b] mb-1.5 font-medium">Mejor Trade</p>
         <p className="font-mono text-base md:text-xl font-bold s" style={{ color: "#4ade80" }}>+${stats.bestTrade.toFixed(2)}</p>
         <p className="font-mono text-[10px] text-[#71717a] mt-0.5 s">peor {formatPnl(stats.worstTrade)}</p>
       </div>

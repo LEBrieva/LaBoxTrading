@@ -114,31 +114,32 @@ export function CalendarView({
       {/* Calendar section */}
       <div className="flex-1 min-w-0">
         {/* Header: nav + summary */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-2">
           <button
             onClick={prevMonth}
-            className="px-3 py-2 rounded text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e] transition-colors text-sm cursor-pointer"
+            className="px-2 md:px-3 py-2 rounded text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e] transition-colors text-sm cursor-pointer shrink-0"
           >
-            &larr; Anterior
+            <span className="hidden md:inline">&larr; Anterior</span>
+            <span className="md:hidden">&larr;</span>
           </button>
 
-          <div className="text-center">
-            <h2 className="text-lg md:text-2xl font-bold text-[#d4d4d8] tracking-wide">
+          <div className="text-center min-w-0">
+            <h2 className="text-base md:text-2xl font-bold text-[#d4d4d8] tracking-wide">
               {MONTHS[month]} {year}
             </h2>
             {monthTrades > 0 && (
-              <div className="flex items-center justify-center gap-4 mt-1">
-                <span className="font-mono text-[11px] text-[#71717a]">
+              <div className="flex items-center justify-center gap-2 md:gap-4 mt-1 flex-wrap">
+                <span className="font-mono text-[10px] md:text-[11px] text-[#71717a]">
                   {monthTrades} trades
                 </span>
                 <span
-                  className={`font-mono text-[11px] font-bold ${
+                  className={`font-mono text-[10px] md:text-[11px] font-bold ${
                     monthPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"
                   }`}
                 >
                   {formatPnl(monthPnl)}
                 </span>
-                <span className="font-mono text-[11px] text-[#71717a]">
+                <span className="font-mono text-[10px] md:text-[11px] text-[#71717a]">
                   {winDays}
                   <span className="text-[#4ade80]">▲</span>
                   {" "}{lossDays}
@@ -151,13 +152,14 @@ export function CalendarView({
           <button
             onClick={nextMonth}
             disabled={isCurrentMonth}
-            className={`px-3 py-2 rounded text-sm transition-colors ${
+            className={`px-2 md:px-3 py-2 rounded text-sm transition-colors shrink-0 ${
               isCurrentMonth
                 ? "text-[#252833] cursor-not-allowed"
                 : "text-[#71717a] hover:text-[#d4d4d8] hover:bg-[#14161e] cursor-pointer"
             }`}
           >
-            Siguiente &rarr;
+            <span className="hidden md:inline">Siguiente &rarr;</span>
+            <span className="md:hidden">&rarr;</span>
           </button>
         </div>
 

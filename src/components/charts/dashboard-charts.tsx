@@ -180,11 +180,11 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
                 <p className="text-[11px] text-[#52525b] tracking-[2px] uppercase">Sin datos en este período</p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={filteredPnl} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={filteredPnl} margin={{ top: 10, right: 5, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#252833" vertical={false} />
-                  <XAxis dataKey="label" stroke="#52525b" fontSize={10} tickLine={false} axisLine={{ stroke: "#252833" }} fontFamily="var(--font-mono)" />
-                  <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} fontFamily="var(--font-mono)" width={60} />
+                  <XAxis dataKey="label" stroke="#52525b" fontSize={9} tickLine={false} axisLine={{ stroke: "#252833" }} fontFamily="var(--font-mono)" />
+                  <YAxis stroke="#52525b" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} fontFamily="var(--font-mono)" width={50} />
                   <Tooltip content={<PnlTooltip />} cursor={{ fill: "rgba(94,234,212,0.05)" }} />
                   <ReferenceLine y={0} stroke="#52525b" strokeWidth={1} />
                   <Bar dataKey="pnl" maxBarSize={40}>
@@ -217,42 +217,66 @@ export function DashboardCharts({ equityData, initialCapital, dailyData, breakdo
               <p className="text-[11px] text-[#52525b] tracking-[2px] uppercase">Sin datos</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="border-b border-[#252833]">
-                    <th className="pb-3 text-left text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Día</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Trades</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Wins</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Losses</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Win %</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">P&L</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Mejor</th>
-                    <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Peor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTable.map((row) => {
-                    const total = row.wins + row.losses;
-                    const wr = total > 0 ? ((row.wins / total) * 100).toFixed(0) : "—";
-                    return (
-                      <tr key={row.date} className="border-b border-[#1a1d27] hover:bg-[#14161e] transition-colors">
-                        <td className="py-3 font-mono text-[#d4d4d8]">{row.label}</td>
-                        <td className="py-3 text-right font-mono text-[#d4d4d8]">{row.trades}</td>
-                        <td className="py-3 text-right font-mono text-[#4ade80]">{row.wins}</td>
-                        <td className="py-3 text-right font-mono text-[#f87171]">{row.losses}</td>
-                        <td className="py-3 text-right font-mono text-[#5eead4]">{wr}%</td>
-                        <td className={`py-3 text-right font-mono font-bold s ${row.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                          {formatPnl(row.pnl)}
-                        </td>
-                        <td className="py-3 text-right font-mono text-[#4ade80] s">{formatPnl(row.best)}</td>
-                        <td className="py-3 text-right font-mono text-[#f87171] s">{formatPnl(row.worst)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Mobile: card layout */}
+              <div className="md:hidden space-y-2">
+                {filteredTable.map((row) => {
+                  const total = row.wins + row.losses;
+                  const wr = total > 0 ? ((row.wins / total) * 100).toFixed(0) : "—";
+                  return (
+                    <div key={row.date} className="flex items-center justify-between bg-[#14161e] rounded-lg px-3 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[12px] font-semibold text-[#d4d4d8] min-w-[38px]">{row.label}</span>
+                        <span className="font-mono text-[10px] text-[#71717a]">
+                          {row.trades}t · <span className="text-[#4ade80]">{row.wins}W</span>/<span className="text-[#f87171]">{row.losses}L</span> · <span className="text-[#5eead4]">{wr}%</span>
+                        </span>
+                      </div>
+                      <span className={`font-mono text-[12px] font-bold s ${row.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                        {formatPnl(row.pnl)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop: full table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#252833]">
+                      <th className="pb-3 text-left text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Día</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Trades</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Wins</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Losses</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Win %</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">P&L</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Mejor</th>
+                      <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Peor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTable.map((row) => {
+                      const total = row.wins + row.losses;
+                      const wr = total > 0 ? ((row.wins / total) * 100).toFixed(0) : "—";
+                      return (
+                        <tr key={row.date} className="border-b border-[#1a1d27] hover:bg-[#14161e] transition-colors">
+                          <td className="py-3 font-mono text-[#d4d4d8]">{row.label}</td>
+                          <td className="py-3 text-right font-mono text-[#d4d4d8]">{row.trades}</td>
+                          <td className="py-3 text-right font-mono text-[#4ade80]">{row.wins}</td>
+                          <td className="py-3 text-right font-mono text-[#f87171]">{row.losses}</td>
+                          <td className="py-3 text-right font-mono text-[#5eead4]">{wr}%</td>
+                          <td className={`py-3 text-right font-mono font-bold s ${row.pnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                            {formatPnl(row.pnl)}
+                          </td>
+                          <td className="py-3 text-right font-mono text-[#4ade80] s">{formatPnl(row.best)}</td>
+                          <td className="py-3 text-right font-mono text-[#f87171] s">{formatPnl(row.worst)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

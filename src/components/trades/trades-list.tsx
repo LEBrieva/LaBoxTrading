@@ -507,8 +507,8 @@ export function TradesList({
             if (externalIdTimerRef.current) clearTimeout(externalIdTimerRef.current);
             externalIdTimerRef.current = setTimeout(() => setExternalIdFilter(val.trim()), 400);
           }}
-          placeholder="Buscar por Broker ID"
-          className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] placeholder:text-[#52525b] w-36"
+          placeholder="Broker ID"
+          className="bg-[#1a1d27] border border-[#252833] text-[#d4d4d8] px-2.5 py-1.5 rounded font-mono text-[11px] outline-none transition-colors focus:border-[#5eead4] placeholder:text-[#52525b] w-full md:w-36"
         />
 
         {/* Separator */}

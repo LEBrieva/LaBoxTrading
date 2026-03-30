@@ -7,11 +7,11 @@ export function HeaderStats({ currency }: { currency: string }) {
   const { stats, loading } = useStats();
 
   return (
-    <div data-tour="header-stats" className="flex items-center gap-4">
+    <div data-tour="header-stats" className="flex items-center gap-2 md:gap-4">
       <div className="text-right">
-        <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">P&L</div>
+        <div className="text-[8px] md:text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">P&L</div>
         <div
-          className={`font-mono text-base md:text-xl font-bold transition-opacity ${
+          className={`font-mono text-sm md:text-xl font-bold transition-opacity ${
             loading
               ? "text-[#52525b]"
               : stats.totalPnl >= 0
@@ -25,10 +25,10 @@ export function HeaderStats({ currency }: { currency: string }) {
         </div>
       </div>
       <div className="hidden md:block w-px h-8 bg-[#252833]" />
-      <div className="text-right">
+      <div className="text-right hidden md:block">
         <div className="text-[9px] uppercase tracking-[2px] text-[#71717a] font-mono">Capital</div>
         <div
-          className="font-mono text-base md:text-xl font-bold text-[#4ade80]"
+          className="font-mono text-xl font-bold text-[#4ade80]"
           style={{ textShadow: "0 0 20px rgba(74,222,128,0.15)" }}
         >
           <span className="s">{formatCurrency(stats.currentCapital, currency)}</span>

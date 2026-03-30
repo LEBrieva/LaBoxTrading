@@ -121,34 +121,54 @@ function BreakdownChart({ data }: { data: BreakdownGroup[] }) {
 function BreakdownTable({ data }: { data: BreakdownGroup[] }) {
   if (data.length === 0) return null;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[500px] text-sm">
-        <thead>
-          <tr className="border-b border-[#252833]">
-            <th className="pb-3 text-left text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Nombre</th>
-            <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Trades</th>
-            <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">WR%</th>
-            <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">P&L</th>
-            <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Avg P&L</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row) => (
-            <tr key={row.name} className="border-b border-[#1a1d27] hover:bg-[#14161e] transition-colors">
-              <td className="py-3 font-mono text-[#d4d4d8]">{row.name}</td>
-              <td className="py-3 text-right font-mono text-[#d4d4d8]">{row.trades}</td>
-              <td className="py-3 text-right font-mono text-[#5eead4]">{row.winRate}%</td>
-              <td className={`py-3 text-right font-mono font-bold s ${row.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {formatPnl(row.totalPnl)}
-              </td>
-              <td className={`py-3 text-right font-mono s ${row.avgPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {formatPnl(row.avgPnl)}
-              </td>
+    <>
+      {/* Mobile: compact cards */}
+      <div className="md:hidden space-y-2">
+        {data.map((row) => (
+          <div key={row.name} className="flex items-center justify-between bg-[#14161e] rounded-lg px-3 py-2.5">
+            <div>
+              <span className="font-mono text-[12px] font-semibold text-[#d4d4d8]">{row.name}</span>
+              <div className="font-mono text-[10px] text-[#71717a]">
+                {row.trades}t · <span className="text-[#5eead4]">{row.winRate}%</span> · avg <span className={row.avgPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}>{formatPnl(row.avgPnl)}</span>
+              </div>
+            </div>
+            <span className={`font-mono text-[12px] font-bold s ${row.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+              {formatPnl(row.totalPnl)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: full table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#252833]">
+              <th className="pb-3 text-left text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Nombre</th>
+              <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Trades</th>
+              <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">WR%</th>
+              <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">P&L</th>
+              <th className="pb-3 text-right text-[10px] uppercase tracking-[2px] text-[#52525b] font-semibold">Avg P&L</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.name} className="border-b border-[#1a1d27] hover:bg-[#14161e] transition-colors">
+                <td className="py-3 font-mono text-[#d4d4d8]">{row.name}</td>
+                <td className="py-3 text-right font-mono text-[#d4d4d8]">{row.trades}</td>
+                <td className="py-3 text-right font-mono text-[#5eead4]">{row.winRate}%</td>
+                <td className={`py-3 text-right font-mono font-bold s ${row.totalPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                  {formatPnl(row.totalPnl)}
+                </td>
+                <td className={`py-3 text-right font-mono s ${row.avgPnl >= 0 ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                  {formatPnl(row.avgPnl)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

@@ -55,10 +55,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   </span>
                   <ConnectionStatus />
                 </div>
-                <div className="flex items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-2 md:gap-6">
                   {account && <HeaderStats currency={account.currency} />}
-                  <DiscordButton />
-                  <DonateButton />
+                  <div className="hidden md:contents">
+                    <DiscordButton />
+                    <DonateButton />
+                  </div>
                   <PrivacyToggle />
                   <AccountSwitcherWrapper accounts={accounts} activeAccountId={activeAccountId} />
                 </div>
