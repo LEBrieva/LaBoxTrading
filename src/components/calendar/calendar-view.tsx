@@ -110,7 +110,7 @@ export function CalendarView({
   const lossDays = monthEntries.filter((d) => d.pnl < 0).length;
 
   return (
-    <div className="flex gap-0 md:h-[calc(100vh-120px)]">
+    <div className="flex gap-0 md:h-[calc(100vh-80px)]">
       {/* Calendar section */}
       <div className="flex-1 min-w-0">
         {/* Header: nav + summary */}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,6 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
+          <Image src="/LTB-logo.png" alt="La Trading Box" width={64} height={64} className="mx-auto mb-4 size-16" unoptimized />
           <h1 className="text-3xl font-extrabold tracking-tight text-[#d4d4d8]">
             LA TRADING BOX
           </h1>
