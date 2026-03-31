@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/auth-errors";
 import { TermsModal } from "@/components/auth/terms-modal";
 
 const inputClass =
@@ -30,6 +31,7 @@ export default function RegisterPage() {
   const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
   const ruleResults = useMemo(() => passwordRules.map((r) => r.test(password)), [password]);
@@ -59,15 +61,13 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(translateAuthError(error.message));
       setLoading(false);
       return;
     }
 
-    if (data.user) {
-      router.push("/");
-      router.refresh();
-    }
+    setLoading(false);
+    setEmailSent(true);
   }
 
   return (
@@ -85,6 +85,26 @@ export default function RegisterPage() {
 
         {/* Card */}
         <div className="bg-[#0e1015] border border-[#252833] rounded-xl p-6">
+          {emailSent ? (
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#5eead4]/10 flex items-center justify-center">
+                <span className="text-[#5eead4] text-xl">✉</span>
+              </div>
+              <p className="text-[13px] text-[#d4d4d8] font-semibold">
+                Revisá tu correo
+              </p>
+              <p className="text-[12px] text-[#71717a] leading-relaxed">
+                Te enviamos un email a <span className="text-[#d4d4d8]">{email}</span> para confirmar tu cuenta. Hacé click en el link del correo para activarla.
+              </p>
+              <Link
+                href="/auth/login"
+                className="inline-block mt-2 text-[12px] text-[#5eead4] hover:underline font-mono"
+              >
+                Ir al login
+              </Link>
+            </div>
+          ) : (
+          <>
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="name" className={labelClass}>
@@ -225,6 +245,8 @@ export default function RegisterPage() {
               Ingresa
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
 

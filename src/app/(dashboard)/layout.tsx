@@ -43,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             targetCapital: account?.targetCapital ?? 0,
           }}
         >
-          <div className="min-h-screen bg-[#08090c]">
+          <div className="flex flex-col min-h-screen bg-[#08090c]">
             <header className="sticky top-0 z-50 bg-[#0e1015] border-b border-[#252833]">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 py-3 md:px-8 md:py-5 gap-2 md:gap-0">
                 <div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </div>
               <NavLinks />
             </header>
-            <main className="pb-20 md:pb-0">{children}</main>
+            <main className="flex-1 pb-20 md:pb-0">{children}</main>
             <Footer />
             <MobileBottomNav />
             <OnboardingWrapper showTour={!user.hasCompletedOnboarding} />
