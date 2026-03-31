@@ -7,11 +7,14 @@ const optionalString = z.string().max(2000).optional();
 const dateString = z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }).optional();
 
 // ── Accounts ──────────────────────────────────────────────────────
+const ALLOWED_BROKERS = ["SIMPLEFX"] as const;
+const capital = z.number().min(0, "No puede ser negativo").max(100_000_000, "Valor demasiado alto");
+
 export const createAccountSchema = z.object({
   name: z.string().min(1).max(100),
-  broker: z.enum(["SIMPLEFX", "BITGET"]),
-  initialCapital: z.number().min(0, "El capital inicial no puede ser negativo"),
-  targetCapital: z.number().min(0, "El capital objetivo no puede ser negativo"),
+  broker: z.enum(ALLOWED_BROKERS),
+  initialCapital: capital,
+  targetCapital: capital,
   currency: z.string().max(10).optional(),
   walletAddress: z.string().max(200).optional(),
   walletNetwork: z.string().max(20).optional(),
@@ -19,11 +22,15 @@ export const createAccountSchema = z.object({
 
 export const updateAccountSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  broker: z.enum(["SIMPLEFX", "BITGET"]).optional(),
-  targetCapital: z.number().positive().optional(),
+  targetCapital: capital.optional(),
   currency: z.string().max(10).optional(),
   walletAddress: z.string().max(200).nullable().optional(),
   walletNetwork: z.string().max(20).nullable().optional(),
+});
+
+export const riskRulesSchema = z.object({
+  dailyLossLimit: z.number().min(0).max(100_000_000).nullable().optional(),
+  maxRiskPct: z.number().min(0).max(100).nullable().optional(),
 });
 
 // ── Trades ────────────────────────────────────────────────────────
@@ -56,24 +63,24 @@ export const updateTradeSchema = z.object({
 export const closePositionSchema = z.object({
   positionId: cuid,
   result: z.enum(["TP", "SL", "BE", "PARTIAL"]),
-  pnl: z.number(),
-  partialPct: z.number().min(0).max(100).optional(),
+  pnl: z.number().min(-100_000_000, "PnL fuera de rango").max(100_000_000, "PnL fuera de rango"),
+  partialPct: z.number().gt(0, "Debe ser mayor a 0").max(100).optional(),
   closedAt: dateString,
-  closePrice: z.number().optional(),
+  closePrice: z.number().positive().optional(),
 });
 
 // ── Transactions ─────────────────────────────────────────────────
 export const createTransactionSchema = z.object({
   accountId: cuid,
   type: z.enum(["DEPOSIT", "WITHDRAWAL", "ADJUSTMENT"]),
-  amount: z.number().refine((v) => v !== 0, { message: "El monto no puede ser 0" }),
+  amount: z.number().positive("El monto debe ser mayor a 0").max(100_000_000, "Monto demasiado alto"),
   date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }),
   note: z.string().max(500).optional(),
 });
 
 export const updateTransactionSchema = z.object({
   type: z.enum(["DEPOSIT", "WITHDRAWAL", "ADJUSTMENT"]).optional(),
-  amount: z.number().refine((v) => v !== 0, { message: "El monto no puede ser 0" }).optional(),
+  amount: z.number().positive("El monto debe ser mayor a 0").max(100_000_000, "Monto demasiado alto").optional(),
   date: z.string().refine((v) => !isNaN(Date.parse(v)), { message: "Fecha inválida" }).optional(),
   note: z.string().max(500).nullable().optional(),
 });

@@ -47,7 +47,6 @@ export function AccountEditDialog({
     try {
       await updateAccount(account.id, {
         name,
-        broker: broker as "SIMPLEFX" | "BITGET",
         targetCapital: parseFloat(targetCapital),
         walletNetwork: walletNetwork || null,
         walletAddress: walletAddress || null,

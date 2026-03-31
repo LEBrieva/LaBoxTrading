@@ -29,6 +29,14 @@ export async function getCandles(
   const user = await getUser();
   checkRateLimit(user.id, "getCandles", 20, 60_000);
 
+  // Validate symbol: only alphanumeric, slashes, dots, hyphens
+  if (!/^[A-Za-z0-9.\/\-_]{1,30}$/.test(symbol)) {
+    throw new Error("Símbolo inválido");
+  }
+  if (!Number.isInteger(cPeriod) || cPeriod <= 0) {
+    throw new Error("Período inválido");
+  }
+
   const params = new URLSearchParams({
     symbol,
     cPeriod: String(cPeriod),

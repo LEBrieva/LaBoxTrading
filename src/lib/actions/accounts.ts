@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUser } from "./auth";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { createAccountSchema, updateAccountSchema } from "@/lib/validations";
+import { createAccountSchema, updateAccountSchema, riskRulesSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ZodError } from "zod/v4";
 
@@ -65,7 +65,6 @@ export async function updateAccount(
   id: string,
   raw: {
     name?: string;
-    broker?: string;
     targetCapital?: number;
     currency?: string;
     walletAddress?: string | null;
@@ -118,6 +117,7 @@ export async function updateRiskRules(
   accountId: string,
   rules: { dailyLossLimit?: number | null; maxRiskPct?: number | null }
 ) {
+  const validRules = riskRulesSchema.parse(rules);
   const user = await getUser();
   checkRateLimit(user.id, "updateRiskRules", 20, 60_000);
 
@@ -129,7 +129,7 @@ export async function updateRiskRules(
 
   await prisma.account.update({
     where: { id: accountId },
-    data: { riskRules: rules },
+    data: { riskRules: validRules },
   });
 
   revalidatePath("/settings");
