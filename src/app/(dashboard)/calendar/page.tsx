@@ -30,8 +30,8 @@ export default async function CalendarPage() {
   );
 
   return (
-    <div className="p-4 md:p-8">
-      <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase mb-6">
+    <div className="p-4 md:p-8 md:flex md:flex-col md:h-full md:min-h-0">
+      <h1 className="text-xl font-bold text-[#d4d4d8] tracking-wide uppercase mb-6 shrink-0">
         Calendario
       </h1>
       <CalendarView
